@@ -1,8 +1,7 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useRef, useEffect } from 'react';
 import heroImage from '../../assets/DSC01280-scaled.jpg';
 import heroImage2 from '../../assets/DSC01281-scaled.jpg';
 import heroImage3 from '../../assets/section-bg-one.jpg';
-import useSlider from '../../hooks/useSlider';
 
 // Define slides outside of the component to prevent recreation on each render
 const slides = [
@@ -34,12 +33,217 @@ const slides = [
   },
 ];
 
+// Custom hook for slider functionality with real-time dragging
+const useSlider = (slides) => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const slidesContainerRef = useRef(null);
+  const containerWidth = useRef(0);
+
+  // Update container width on resize
+  useEffect(() => {
+    const updateWidth = () => {
+      if (slidesContainerRef.current) {
+        containerWidth.current = slidesContainerRef.current.clientWidth;
+      }
+    };
+
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  // Handle slide transition
+  const goToSlide = useCallback((index) => {
+    // Only allow going to valid slide indices
+    if (index >= 0 && index < slides.length) {
+      setCurrentSlide(index);
+      setIsAnimating(true);
+    }
+    
+    // Always reset drag offset
+    setDragOffset(0);
+  }, [slides.length]);
+
+  const nextSlide = useCallback(() => {
+    if (!isAnimating) {
+      goToSlide(currentSlide + 1);
+    }
+  }, [currentSlide, isAnimating, goToSlide]);
+
+  const prevSlide = useCallback(() => {
+    if (!isAnimating) {
+      goToSlide(currentSlide - 1);
+    }
+  }, [currentSlide, isAnimating, goToSlide]);
+
+  const handleTransitionEnd = useCallback(() => {
+    setIsAnimating(false);
+  }, []);
+
+  // Touch events
+  const handleTouchStart = useCallback((e) => {
+    if (isAnimating) return;
+    
+    setIsDragging(true);
+    setDragStartX(e.touches[0].clientX);
+    
+    // Disable the transition during dragging
+    if (slidesContainerRef.current) {
+      slidesContainerRef.current.style.transition = 'none';
+    }
+  }, [isAnimating]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!isDragging) return;
+    
+    const currentX = e.touches[0].clientX;
+    const diff = dragStartX - currentX;
+    
+    // Calculate the drag percentage of container width
+    let offsetPercentage = (diff / containerWidth.current) * 100;
+    
+    // Add resistance when dragging beyond the first or last slide
+    if ((currentSlide === 0 && offsetPercentage < 0) || 
+        (currentSlide === slides.length - 1 && offsetPercentage > 0)) {
+      // Apply resistance factor (0.3 means it moves at 30% of normal speed)
+      offsetPercentage *= 0.3;
+    }
+    
+    setDragOffset(offsetPercentage);
+  }, [isDragging, dragStartX, currentSlide, slides.length]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isDragging) return;
+    
+    // Enable the transition effect again
+    if (slidesContainerRef.current) {
+      slidesContainerRef.current.style.transition = 'transform 1000ms ease-in-out';
+    }
+    
+    // If dragged more than 20% of slide width, change slide
+    if (Math.abs(dragOffset) > 20) {
+      // Check if we're at the edge slides
+      if (dragOffset > 0 && currentSlide < slides.length - 1) {
+        nextSlide();
+      } else if (dragOffset < 0 && currentSlide > 0) {
+        prevSlide();
+      } else {
+        // At edge, just reset
+        setDragOffset(0);
+      }
+    } else {
+      // If not dragged enough, reset to current slide (clear offset)
+      setDragOffset(0);
+    }
+    
+    setIsDragging(false);
+  }, [isDragging, dragOffset, nextSlide, prevSlide, currentSlide, slides.length]);
+
+  // Mouse events for desktop dragging
+  const handleMouseDown = useCallback((e) => {
+    if (isAnimating) return;
+    
+    setIsDragging(true);
+    setDragStartX(e.clientX);
+    
+    // Disable the transition during dragging
+    if (slidesContainerRef.current) {
+      slidesContainerRef.current.style.transition = 'none';
+    }
+    
+    // Prevent default to avoid text selection while dragging
+    e.preventDefault();
+  }, [isAnimating]);
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isDragging) return;
+    
+    const currentX = e.clientX;
+    const diff = dragStartX - currentX;
+    
+    // Calculate the drag percentage of container width
+    let offsetPercentage = (diff / containerWidth.current) * 100;
+    
+    // Add resistance when dragging beyond the first or last slide
+    if ((currentSlide === 0 && offsetPercentage < 0) || 
+        (currentSlide === slides.length - 1 && offsetPercentage > 0)) {
+      // Apply resistance factor (0.3 means it moves at 30% of normal speed)
+      offsetPercentage *= 0.3;
+    }
+    
+    setDragOffset(offsetPercentage);
+    
+    // Prevent default to avoid text selection
+    e.preventDefault();
+  }, [isDragging, dragStartX, currentSlide, slides.length]);
+
+  const handleMouseUp = useCallback((e) => {
+    if (!isDragging) return;
+    
+    // Enable the transition effect again
+    if (slidesContainerRef.current) {
+      slidesContainerRef.current.style.transition = 'transform 1000ms ease-in-out';
+    }
+    
+    // If dragged more than 20% of slide width, change slide
+    if (Math.abs(dragOffset) > 20) {
+      // Check if we're at the edge slides
+      if (dragOffset > 0 && currentSlide < slides.length - 1) {
+        nextSlide();
+      } else if (dragOffset < 0 && currentSlide > 0) {
+        prevSlide();
+      } else {
+        // At edge, just reset
+        setDragOffset(0);
+      }
+    } else {
+      // If not dragged enough, reset to current slide
+      setDragOffset(0);
+    }
+    
+    setIsDragging(false);
+    
+    // Prevent default to maintain consistency
+    e.preventDefault();
+  }, [isDragging, dragOffset, nextSlide, prevSlide, currentSlide, slides.length]);
+
+  const handleMouseLeave = useCallback((e) => {
+    if (isDragging) {
+      handleMouseUp(e);
+    }
+  }, [isDragging, handleMouseUp]);
+
+  return {
+    currentSlide,
+    isAnimating,
+    isDragging,
+    dragOffset,
+    slidesContainerRef,
+    nextSlide,
+    prevSlide,
+    goToSlide,
+    handleTransitionEnd,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleMouseLeave
+  };
+};
+
 const HeroSlider = () => {
   // Use our custom slider hook
   const {
     currentSlide,
     isAnimating,
     isDragging,
+    dragOffset,
     slidesContainerRef,
     nextSlide,
     prevSlide,
@@ -67,14 +271,17 @@ const HeroSlider = () => {
     // You could set a placeholder or fallback image here
   }, []);
 
+  // Calculate the transform value based on current slide and drag offset
+  const transformValue = `translateX(-${(currentSlide * 100) + dragOffset}%)`;
+
   return (
-    <div className="relative w-full h-[calc(100vh-40px)] overflow-hidden group rounded-b-3xl">
+    <div className="relative w-full h-[calc(100vh-40px)] overflow-hidden group rounded-b-[30px]">
       {/* Slides container with animation */}
       <div 
         ref={slidesContainerRef}
         className="w-full h-full flex transition-transform duration-1000 ease-in-out"
         style={{ 
-          transform: `translateX(-${currentSlide * 100}%)`,
+          transform: transformValue,
           cursor: isDragging ? 'grabbing' : 'grab',
         }}
         onTransitionEnd={handleTransitionEnd}

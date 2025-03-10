@@ -9,14 +9,16 @@ const MemoizedMarqueeSlider = memo(MarqueeSlider);
 
 function App() {
   return (
-    <div className="bg-white p-4 sm:p-6 lg:p-6 min-h-screen">
-      {/* White border container with rounded corners */}
-      <div className="relative bg-gray-50 min-h-[calc(100vh-32px)] overflow-hidden rounded-3xl lg:rounded-tl-[24px] lg:rounded-tr-lg lg:rounded-br-lg lg:rounded-bl-lg">
-        <Router>
+    <Router>
+      {/* Header comes first at full width, outside any containers with padding */}
+      
+      <Header />
+      
+      {/* Main content div with padding */}
+      <div className="bg-white p-4 sm:p-6 lg:p-6 min-h-screen">
+        {/* White border container with rounded corners */}
+        <div className="relative bg-gray-50 min-h-[calc(100vh-32px)] overflow-hidden rounded-[30px] ">
           <div className="relative font-questrial">
-            {/* Header - fixed at the top when scrolled */}
-            <Header />
-            
             {/* SVG for top-right corner rounded effect - laptop and desktop only */}
             <div className="absolute top-20 right-0 z-10 hidden lg:block">
               <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none">
@@ -62,9 +64,9 @@ function App() {
               </div>
             </div>
           </div>
-        </Router>
+        </div>
       </div>
-    </div>
+    </Router>
   );
 }
 
