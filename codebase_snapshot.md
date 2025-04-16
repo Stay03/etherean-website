@@ -1,620 +1,1219 @@
 # Codebase Documentation
 
 {
-  "Extraction Date": "2025-03-10 00:45:14",
+  "Extraction Date": "2025-04-15 02:06:03",
   "Include Paths": [
-    "src/components/home/HeroSlider.jsx",
-    "src/components/layout/Header.jsx",
+    "src/pages/CourseDetailPage.jsx",
+    "src/services/api/client.js",
+    "src/services/api/endpoints.js",
+    "src/components/courses/EnrollButton.jsx",
+    "src/components/courses/CourseHeader.jsx",
+    "src/hooks/useCourseDetail.js",
+    "src/services/api/courseService.js",
     "src/App.js"
   ]
 }
 
-### src/components/home/HeroSlider.jsx
+### src/pages/CourseDetailPage.jsx
 ```
-import React, { useState, useCallback, memo } from 'react';
-import heroImage from '../../assets/DSC01280-scaled.jpg';
-import heroImage2 from '../../assets/DSC01281-scaled.jpg';
-import heroImage3 from '../../assets/section-bg-one.jpg';
-import useSlider from '../../hooks/useSlider';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import CourseHeader from '../components/courses/CourseHeader';
+import CourseDescription from '../components/courses/CourseDescription';
+import CourseSections from '../components/courses/CourseSections';
+import CourseInfoTabs from '../components/courses/CourseInfoTabs';
+import EnrollButton from '../components/courses/EnrollButton';
+import useCourseDetail from '../hooks/useCourseDetail';
+import { useAuth } from '../contexts/AuthContext';
 
-// Define slides outside of the component to prevent recreation on each render
-const slides = [
-  { 
-    id: 1, 
-    image: heroImage, 
-    alt: 'Etherean Hero Image',
-    title: 'Welcome to Etherean Life',
-    description: 'Discover tools for activation and free expression of your innate potentials.',
-    ctaText: 'Learn More',
-    ctaLink: '/about'
-  },
-  { 
-    id: 2, 
-    image: heroImage2, 
-    alt: 'Etherean Hero Image 2',
-    title: 'Find Your Inner Peace',
-    description: 'Our mission is to help you realize your inner peace through spiritual growth.',
-    ctaText: 'Join Our Community',
-    ctaLink: '/membership'
-  },
-  { 
-    id: 3, 
-    image: heroImage3, 
-    alt: 'Etherean Hero Image 3',
-    title: 'Welcome to Etherean Life',
-    ctaText: 'Learn More',
-    ctaLink: '/about'
-  },
-];
-
-const HeroSlider = () => {
-  // Use our custom slider hook
-  const {
-    currentSlide,
-    isAnimating,
-    isDragging,
-    slidesContainerRef,
-    nextSlide,
-    prevSlide,
-    goToSlide,
-    handleTransitionEnd,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    handleMouseLeave
-  } = useSlider(slides);
-
-  // CTA hover state (not included in the slider hook as it's specific to this UI)
-  const [hoveredCTA, setHoveredCTA] = useState(false);
+/**
+ * CourseDetailPage Component
+ * Displays detailed information about a specific course
+ */
+const CourseDetailPage = () => {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   
-  // Memoized handler for CTA hover
-  const handleCTAHoverEnter = useCallback(() => setHoveredCTA(true), []);
-  const handleCTAHoverLeave = useCallback(() => setHoveredCTA(false), []);
+  // Fetch course details using custom hook
+  const { 
+    course, 
+    hasAccess,
+    isLoading, 
+    error, 
+    refetch 
+  } = useCourseDetail(slug);
 
-  // Error handling for images - memoized
-  const handleImageError = useCallback((index) => {
-    console.error(`Failed to load image for slide ${index + 1}`);
-    // You could set a placeholder or fallback image here
-  }, []);
+  // Redirect to courses page if slug is missing
+  useEffect(() => {
+    if (!slug) {
+      navigate('/courses');
+    }
+  }, [slug, navigate]);
+
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse">
+          {/* Header skeleton */}
+          <div className="flex flex-col md:flex-row gap-8">
+            <div className="w-full md:w-2/3 h-96 bg-gray-200 rounded-lg"></div>
+            <div className="w-full md:w-1/3 space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-24 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded-full w-full"></div>
+            </div>
+          </div>
+          
+          {/* Description skeleton */}
+          <div className="mt-10 space-y-2">
+            <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
+          
+          {/* Sections skeleton */}
+          <div className="mt-10 space-y-4">
+            <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded w-full"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-8 max-w-2xl mx-auto">
+            <svg className="h-12 w-12 text-red-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h3 className="text-lg font-medium text-red-800 mb-2">
+              {error.status === 404 ? 'Course not found' : 'Unable to load course'}
+            </h3>
+            <p className="text-red-700 mb-4">
+              {error.message || 'An unexpected error occurred. Please try again later.'}
+            </p>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={refetch}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={() => navigate('/courses')}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Back to Courses
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle course not found or invalid data
+  if (!course || !course.product_info) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 max-w-2xl mx-auto">
+            <svg className="h-12 w-12 text-yellow-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">Course Not Found</h3>
+            <p className="text-yellow-700 mb-4">
+              The course you're looking for doesn't exist or has been removed.
+            </p>
+            <button
+              onClick={() => navigate('/courses')}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+            >
+              Browse All Courses
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative w-full h-[calc(100vh-40px)] overflow-hidden group rounded-b-3xl">
-      {/* Slides container with animation */}
-      <div 
-        ref={slidesContainerRef}
-        className="w-full h-full flex transition-transform duration-1000 ease-in-out"
-        style={{ 
-          transform: `translateX(-${currentSlide * 100}%)`,
-          cursor: isDragging ? 'grabbing' : 'grab',
-        }}
-        onTransitionEnd={handleTransitionEnd}
-        // Touch events for mobile
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        // Mouse events for desktop dragging
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-      >
-        {/* Render all slides side by side */}
-        {slides.map((slide, index) => (
-          <div 
-            key={slide.id}
-            className="w-full h-full flex-shrink-0 relative"
-            style={{
-              backgroundImage: `url(${slide.image})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'top',
-              minHeight: '100vh', // Ensures minimum height of viewport
-            }}
-            aria-hidden={index !== currentSlide}
-          >
-            {/* Dark overlay */}
-            <div 
-              className="absolute inset-0"
-              style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
-            ></div>
-            
-            {/* Slide content */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4 sm:px-6 lg:px-8">
-              <div className="max-w-3xl mx-auto text-center pt-20">
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-4 tracking-tight">
-                  {slide.title}
-                </h1>
-                {slide.description && (
-                  <p className="text-xl md:text-2xl mb-8 max-w-2xl mx-auto">
-                    {slide.description}
-                  </p>
-                )}
-                <div className="inline-flex items-center">
-                  <a 
-                    href={slide.ctaLink} 
-                    className={`inline-block font-semibold text-2xl md:text-3xl py-3 px-8 rounded-full transition-colors duration-300 ${
-                      hoveredCTA ? 'bg-white text-[#292929]' : 'bg-yellow-500 text-[#292929]'
-                    }`}
-                    style={{ lineHeight: '1.3' }}
-                    onMouseEnter={handleCTAHoverEnter}
-                    onMouseLeave={handleCTAHoverLeave}
-                  >
-                    {slide.ctaText}
-                  </a>
-                  <a
-                    href={slide.ctaLink}
-                    className={`rounded-full flex items-center justify-center h-14 w-14 transition-colors duration-300 ${
-                      hoveredCTA ? 'bg-white' : 'bg-yellow-500'
-                    }`}
-                    onMouseEnter={handleCTAHoverEnter}
-                    onMouseLeave={handleCTAHoverLeave}
-                  >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className={`h-6 w-6 transform rotate-[315deg] ${
-                        hoveredCTA ? 'text-[#292929]' : 'text-[#292929]'
-                      }`} 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-            
-            {/* Hidden image for preloading */}
-            <img 
-              src={slide.image} 
-              alt={slide.alt} 
-              className="hidden"
-              onError={() => handleImageError(index)} 
+    <div className="bg-white">
+      {/* Course Header Section */}
+      <CourseHeader course={course} hasAccess={hasAccess} />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {/* Course Information Tabs */}
+            <CourseInfoTabs
+              overview={<CourseDescription description={course.product_info.description} />}
+              curriculum={<CourseSections sections={course.sections} />}
             />
           </div>
-        ))}
-      </div>
-
-      {/* Left arrow - visible on hover */}
-      <button 
-        onClick={prevSlide}
-        disabled={isAnimating}
-        className={`
-          absolute left-5 top-1/2 transform -translate-y-1/2 
-          bg-white/70 hover:bg-white/90 p-2 rounded-full 
-          opacity-0 group-hover:opacity-100 transition-opacity duration-300
-          ${isAnimating ? 'cursor-not-allowed' : 'cursor-pointer'}
-        `}
-        aria-label="Previous slide"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-
-      {/* Right arrow - visible on hover */}
-      <button 
-        onClick={nextSlide}
-        disabled={isAnimating}
-        className={`
-          absolute right-5 top-1/2 transform -translate-y-1/2 
-          bg-white/70 hover:bg-white/90 p-2 rounded-full 
-          opacity-0 group-hover:opacity-100 transition-opacity duration-300
-          ${isAnimating ? 'cursor-not-allowed' : 'cursor-pointer'}
-        `}
-        aria-label="Next slide"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-
-      {/* Slide indicators */}
-      <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => goToSlide(index)}
-            className={`w-3 h-3 rounded-full transition-colors ${
-              index === currentSlide ? 'bg-white' : 'bg-white/50'
-            }`}
-            aria-label={`Go to slide ${index + 1}`}
-            aria-current={index === currentSlide ? 'true' : 'false'}
-          />
-        ))}
+          
+          {/* Sidebar - Can include related courses, instructor info, etc. */}
+          <div className="lg:col-span-1">
+            <div className="bg-gray-50 rounded-lg p-6 sticky top-24">
+              <h3 className="text-lg font-semibold mb-4">Course Information</h3>
+              
+              {/* Course Details */}
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Platform</span>
+                  <span className="text-gray-900 font-medium">{course.product_info.platform}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Sections</span>
+                  <span className="text-gray-900 font-medium">{course.sections?.length || 0}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Lessons</span>
+                  <span className="text-gray-900 font-medium">
+                    {course.sections?.reduce((total, section) => total + (section.lessons?.length || 0), 0) || 0}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Progress Tracking</span>
+                  <span className="text-gray-900 font-medium">
+                    {course.progression_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                
+                {hasAccess && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Access Status</span>
+                    <span className="text-green-600 font-medium">
+                      Active
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Enrollment CTA */}
+              <div className="mt-6 space-y-3">
+                <EnrollButton 
+                  course={course}
+                  hasAccess={hasAccess}
+                  onBuyNow={(course) => console.log('Buy now:', course)}
+                />
+                
+                {!hasAccess && parseFloat(course.product_info.price) > 0 && (
+                  <>
+                    <EnrollButton 
+                      course={course}
+                      hasAccess={hasAccess}
+                      isAddToCart={true}
+                      onAddToCart={(course) => console.log('Add to cart:', course)}
+                    />
+                    
+                    {/* Helper text to explain button differences */}
+                    <div className="mt-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-md">
+                      <p className="text-xs text-blue-800 flex items-start">
+                        <svg className="h-4 w-4 mr-1 flex-shrink-0 mt-0.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>
+                          <strong>Buy Now</strong> proceeds directly to checkout, while <strong>Add to Cart</strong> allows you to continue shopping and checkout later.
+                        </span>
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-// Wrap with React.memo to prevent unnecessary re-renders
-export default memo(HeroSlider);
+export default CourseDetailPage;
 ```
 
-### src/components/layout/Header.jsx
+### src/services/api/client.js
 ```
-import React, { useState, useCallback, memo } from 'react';
-import { Link } from 'react-router-dom';
-import ethLogo from '../../assets/eth.png';
-import useScrollPosition from '../../hooks/useScrollPosition';
+/**
+ * Base API client for making HTTP requests
+ * Centralizes request configuration and error handling
+ */
 
-// Move static data outside component to prevent recreation on each render
-const menuItems = [
-  { name: 'About Us', path: '/about', hasDropdown: true },
-  { name: 'Ministries', path: '/ministries', hasDropdown: true },
-  { name: 'Courses', path: '/courses', hasDropdown: false },
-  { name: 'Membership', path: '/membership', hasDropdown: true },
-  { name: 'Store', path: '/store', hasDropdown: false },
-];
+const API_BASE_URL = 'http://localhost:8000/api';
 
-// Social media icons data
-const socialIcons = [
-  { name: 'facebook', icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" className="w-4 h-4 fill-current"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg> },
-  { name: 'twitter', icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-4 h-4 fill-current"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg> },
-  { name: 'instagram', icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" className="w-4 h-4 fill-current"><path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg> },
-  { name: 'pinterest', icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" className="w-4 h-4 fill-current"><path d="M204 6.5C101.4 6.5 0 74.9 0 185.6 0 256 39.6 296 63.6 296c9.9 0 15.6-27.6 15.6-35.4 0-9.3-23.7-29.1-23.7-67.8 0-80.4 61.2-137.4 140.4-137.4 68.1 0 118.5 38.7 118.5 109.8 0 53.1-21.3 152.7-90.3 152.7-24.9 0-46.2-18-46.2-43.8 0-37.8 26.4-74.4 26.4-113.4 0-66.2-93.9-54.2-93.9 25.8 0 16.8 2.1 35.4 9.6 50.7-13.8 59.4-42 147.9-42 209.1 0 18.9 2.7 37.5 4.5 56.4 3.4 3.8 1.7 3.4 6.9 1.5 50.4-69 48.6-82.5 71.4-172.8 12.3 23.4 44.1 36 69.3 36 106.2 0 153.9-103.5 153.9-196.8C384 71.3 298.2 6.5 204 6.5z"/></svg> }
-];
+/**
+ * Creates and returns API request options with proper headers
+ * @param {Object} options - Request options
+ * @returns {Object} - Configured request options
+ */
+const createRequestOptions = (options = {}) => {
+  const defaultOptions = {
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    ...options,
+  };
 
-const Header = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState({});
+  // Add authentication token if available
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return defaultOptions;
+};
+
+/**
+ * Builds a URL with query parameters
+ * @param {string} endpoint - API endpoint
+ * @param {Object} params - Query parameters
+ * @returns {string} - Full URL with query string
+ */
+const buildUrl = (endpoint, params = {}) => {
+  const url = new URL(`${API_BASE_URL}${endpoint}`);
   
-  // Use our custom scroll position hook
-  const isScrolled = useScrollPosition(50);
-
-  // Memoized toggle for mobile menu
-  const toggleMobileMenu = useCallback(() => {
-    setMobileMenuOpen(prevState => !prevState);
-  }, []);
-
-  // Memoized toggle for expanding menu items
-  const toggleExpand = useCallback((itemName) => {
-    setExpandedItems(prevState => ({
-      ...prevState,
-      [itemName]: !prevState[itemName]
-    }));
-  }, []);
-
-  // Memoized handler for mobile menu item click
-  const handleMobileMenuItemClick = useCallback((hasDropdown) => {
-    if (!hasDropdown) {
-      setMobileMenuOpen(false);
+  // Add query parameters
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== null) {
+      url.searchParams.append(key, params[key]);
     }
-  }, []);
+  });
+  
+  return url.toString();
+};
 
-  // Dynamic classes for the header based on scroll state
-  const headerClasses = `w-full z-10 transition-all duration-300 ${
-    isScrolled 
-      ? 'fixed top-0 bg-white ' 
-      : 'absolute bg-transparent'
-  }`;
+/**
+ * Handles API response
+ * @param {Response} response - Fetch API response
+ * @returns {Promise} - Resolved with data or rejected with error
+ */
+const handleResponse = async (response) => {
+  const data = await response.json();
+  
+  if (!response.ok) {
+    // Create standardized error object
+    const error = {
+      status: response.status,
+      statusText: response.statusText,
+      message: data.message || 'An error occurred',
+      errors: data.errors || {},
+      data: data.data || null,
+    };
+    
+    throw error;
+  }
+  
+  return data;
+};
 
-  return (
-    <header className={headerClasses}>
-      {/* Desktop Header - only for laptop and up */}
-      <div className="hidden lg:flex">
-        {/* Logo Area - Left side */}
-        <div className={`flex items-center h-20 pl-8 pr-12 ${isScrolled ? 'bg-white' : 'bg-transparent'}`}>
-          <Link to="/" className="flex items-center">
-            <img src={ethLogo} alt="Etherean Life" className="h-12 w-auto" />
-          </Link>
-        </div>
-        
-        {/* Slanted divider SVG - only visible when not scrolled */}
-        {!isScrolled && (
-          <div className="relative h-20" style={{ marginRight: "-15px" }}>
-            <svg width="93" height="80" viewBox="0 0 93 116" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full">
-              <path fillRule="evenodd" clipRule="evenodd" d="M93 116V0H0C11.604 0.00830078 22.1631 6.70752 27.1128 17.2046L65.5889 98.7954C70.5415 109.299 81.1108 116 92.7231 116H93Z" fill="white"></path>
-            </svg>
-          </div>
-        )}
-        
-        {/* Navigation Menu - Right side with white background */}
-        <div className="flex-1 bg-white h-20">
-          <nav className="h-full flex justify-end">
-            <ul className="flex items-center pr-8">
-              {menuItems.map((item) => (
-                <li key={item.name} className="mx-3">
-                  <Link
-                    to={item.path}
-                    className="text-gray-800 hover:text-gray-600 transition-colors duration-200 font-medium flex items-center py-2 px-1 text-lg font-medium"
-                  >
-                    {item.name}
-                    {item.hasDropdown && (
-                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    )}
-                  </Link>
-                </li>
-              ))}
-              <li className="mx-3 ml-6">
-                <Link
-                  to="/login"
-                  className="text-yellow-500 hover:text-yellow-600 transition-colors duration-200 font-medium text-lg"
-                >
-                  Login
-                </Link>
-              </li>
-              <li className="ml-6">
-                <button className="bg-yellow-500 rounded-full p-3 text-white hover:bg-yellow-600 transition-colors duration-200">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
-              </li>
-            </ul>
-          </nav>
-        </div>
-      </div>
+/**
+ * Makes a GET request to the API
+ * @param {string} endpoint - API endpoint
+ * @param {Object} params - Query parameters
+ * @returns {Promise} - Promise that resolves with the response data
+ */
+const get = async (endpoint, params = {}) => {
+  try {
+    const url = buildUrl(endpoint, params);
+    const options = createRequestOptions({ method: 'GET' });
+    
+    const response = await fetch(url, options);
+    return handleResponse(response);
+  } catch (error) {
+    console.error(`GET request failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
 
-      {/* Mobile/Tablet Header */}
-      <div className={`lg:hidden flex justify-between items-center h-16 px-4 ${isScrolled ? 'bg-white' : 'bg-transparent'}`}>
-        <Link to="/" className="flex items-center z-10">
-          <img src={ethLogo} alt="Etherean Life" className="h-10 w-auto" />
-        </Link>
-        
-        <div className="flex items-center z-10">
-          <button 
-            className={`p-2 mr-2 ${isScrolled ? 'text-yellow-500' : 'text-yellow-500'}`}
-            aria-label="Search"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </button>
-          
-          <button 
-            className={`p-2 ${isScrolled ? 'text-gray-800' : 'text-white'}`}
-            onClick={toggleMobileMenu}
-            aria-label="Menu"
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-menu"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
-        </div>
-      </div>
+/**
+ * Makes a POST request to the API
+ * @param {string} endpoint - API endpoint
+ * @param {Object} data - Request body data
+ * @param {Object} params - Query parameters
+ * @returns {Promise} - Promise that resolves with the response data
+ */
+const post = async (endpoint, data = {}, params = {}) => {
+  try {
+    const url = buildUrl(endpoint, params);
+    const options = createRequestOptions({
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    
+    const response = await fetch(url, options);
+    return handleResponse(response);
+  } catch (error) {
+    console.error(`POST request failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
 
-      {/* Mobile/Tablet Menu */}
-      <div 
-        id="mobile-menu"
-        className={`lg:hidden fixed right-0 top-0 h-screen w-64 bg-gray-900 text-white z-50 overflow-y-auto transform ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300`}
-        style={{ transitionTimingFunction: 'cubic-bezier(0.785, 0.135, 0.15, 0.86)' }}
-      >
-        {/* Close button */}
-        <div className="flex justify-end p-4">
-          <button 
-            onClick={toggleMobileMenu}
-            aria-label="Close Menu"
-            className="text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        {/* Logo */}
-        <div className="px-6 py-4 flex items-center">
-          <img src={ethLogo} alt="Etherean Life" className="h-8 w-auto" />
-        </div>
-        
-        {/* Menu Items */}
-        <nav className="px-4">
-          <ul className="space-y-1">
-            {menuItems.map((item) => (
-              <li key={item.name} className="border-b border-gray-700">
-                <div className="flex items-center justify-between py-3">
-                  <Link
-                    to={item.path}
-                    className="text-white hover:text-yellow-500 transition-colors font-medium text-base"
-                    onClick={() => handleMobileMenuItemClick(item.hasDropdown)}
-                  >
-                    {item.name}
-                  </Link>
-                  {item.hasDropdown && (
-                    <button 
-                      onClick={() => toggleExpand(item.name)}
-                      className="text-yellow-500 p-1"
-                      aria-expanded={expandedItems[item.name] ? 'true' : 'false'}
-                      aria-controls={`submenu-${item.name}`}
-                    >
-                      <div className="w-6 h-6 flex items-center justify-center border border-yellow-500 rounded-sm">
-                        {expandedItems[item.name] ? 
-                          <span className="text-lg leading-none mb-1">-</span> : 
-                          <span className="text-lg leading-none">+</span>
-                        }
-                      </div>
-                    </button>
-                  )}
-                </div>
-                
-                {/* Dropdown content - would need to be populated with actual submenu items */}
-                {item.hasDropdown && (
-                  <div 
-                    id={`submenu-${item.name}`}
-                    className={`pl-4 pb-2 overflow-hidden transition-all duration-300`}
-                    style={{ 
-                      maxHeight: expandedItems[item.name] ? '200px' : '0',
-                      transitionTimingFunction: 'cubic-bezier(0.785, 0.135, 0.15, 0.86)'
-                    }}
-                  >
-                    <ul className="space-y-2">
-                      <li>
-                        <Link 
-                          to={`${item.path}/sub-1`} 
-                          className="text-gray-300 hover:text-yellow-500 block py-1"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Submenu Item 1
-                        </Link>
-                      </li>
-                      <li>
-                        <Link 
-                          to={`${item.path}/sub-2`} 
-                          className="text-gray-300 hover:text-yellow-500 block py-1"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Submenu Item 2
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-                )}
-              </li>
-            ))}
-            
-            {/* Login Link */}
-            <li className="border-b border-gray-700 py-3">
-              <Link
-                to="/login"
-                className="text-yellow-500 hover:text-yellow-400 transition-colors font-medium block"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Login
-              </Link>
-            </li>
-          </ul>
-        </nav>
-        
-        {/* Contact Info Section */}
-        <div className="mt-8 px-4">
-          <h3 className="font-medium text-white mb-4">Contact Info</h3>
-          <ul className="space-y-3">
-            <li className="flex items-start">
-              <svg className="w-5 h-5 text-yellow-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="text-gray-300 text-sm">P.O. Box AN 8452, Accra-North</span>
-            </li>
-            <li className="flex items-start">
-              <svg className="w-5 h-5 text-yellow-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              <span className="text-gray-300 text-sm">info@ethereanlife.com</span>
-            </li>
-            <li className="flex items-start">
-              <svg className="w-5 h-5 text-yellow-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              <span className="text-gray-300 text-sm">(+233) 302 230702</span>
-            </li>
-          </ul>
-        </div>
-        
-        {/* Social Media Icons */}
-        <div className="mt-6 px-4 flex space-x-4">
-          {socialIcons.map((social) => (
-            <a 
-              key={social.name}
-              href={`#${social.name}`} 
-              className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white hover:bg-yellow-500 transition-colors"
-              aria-label={`Follow us on ${social.name}`}
-            >
-              {social.icon}
-            </a>
-          ))}
-        </div>
-      </div>
+/**
+ * Makes a PUT request to the API
+ * @param {string} endpoint - API endpoint
+ * @param {Object} data - Request body data
+ * @param {Object} params - Query parameters
+ * @returns {Promise} - Promise that resolves with the response data
+ */
+const put = async (endpoint, data = {}, params = {}) => {
+  try {
+    const url = buildUrl(endpoint, params);
+    const options = createRequestOptions({
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    
+    const response = await fetch(url, options);
+    return handleResponse(response);
+  } catch (error) {
+    console.error(`PUT request failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Makes a DELETE request to the API
+ * @param {string} endpoint - API endpoint
+ * @param {Object} params - Query parameters
+ * @returns {Promise} - Promise that resolves with the response data
+ */
+const del = async (endpoint, params = {}) => {
+  try {
+    const url = buildUrl(endpoint, params);
+    const options = createRequestOptions({ method: 'DELETE' });
+    
+    const response = await fetch(url, options);
+    return handleResponse(response);
+  } catch (error) {
+    console.error(`DELETE request failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
+
+const apiClient = {
+  get,
+  post,
+  put,
+  delete: del,
+};
+
+export default apiClient;
+```
+
+### src/services/api/endpoints.js
+```
+/**
+ * API endpoints definitions
+ * Centralized location for all API endpoints used in the application
+ */
+
+const endpoints = {
+  // Banner endpoints
+  banners: {
+    list: '/banners',
+    get: (id) => `/banners/${id}`,
+  },
+  
+  // Course endpoints
+  courses: {
+    list: '/courses',
+    get: (id) => `/courses/${id}`,
+    getBySlug: (slug) => `/courses/slug/${slug}`,
+  },
+  
+  // Add more endpoint categories as needed
+  events: {
+    list: '/events',
+    get: (id) => `/events/${id}`,
+  },
+  
+  // Authentication endpoints
+  auth: {
+    login: '/auth/login',
+    register: '/auth/register',
+    logout: '/auth/logout',
+    refreshToken: '/auth/refresh-token',
+    forgotPassword: '/auth/forgot-password',
+    resetPassword: '/auth/reset-password',
+  },
+  
+  // User endpoints
+  user: {
+    profile: '/user/profile',
+    updateProfile: '/user/profile',
+  },
+};
+
+export default endpoints;
+```
+
+### src/components/courses/EnrollButton.jsx
+```
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import AuthModal from '../auth/AuthModal';
+import freeProductService from '../../services/api/freeProductService';
+import paymentService from '../../services/api/paymentService';
+import PaystackPop from '@paystack/inline-js';
+
+/**
+ * EnrollButton Component
+ * Call-to-action button for course purchase with different states
+ * 
+ * @param {Object} course - Course object
+ * @param {boolean} hasAccess - Whether the user already has access to the course
+ * @param {boolean} isAddToCart - Whether this is an "Add to Cart" button
+ * @param {Function} onBuyNow - Function to call when buying now
+ * @param {Function} onAddToCart - Function to call when adding to cart
+ */
+const EnrollButton = ({ 
+  course, 
+  hasAccess = false,
+  isAddToCart = false,
+  onBuyNow,
+  onAddToCart
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const navigate = useNavigate();
+  const { isAuthenticated, checkAuthStatus } = useAuth();
+  const { showToast } = useToast();
+  
+  // Check if course is free
+  const isFree = () => {
+    if (!course.product_info.price) return false;
+    return parseFloat(course.product_info.price) === 0;
+  };
+  
+  // Handle free course acquisition
+  const acquireFreeProduct = async () => {
+    try {
+      setIsLoading(true);
       
-      {/* Dark overlay when mobile menu is open */}
-      <div 
-        className={`lg:hidden fixed inset-0 bg-black z-40 ${mobileMenuOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'}`}
-        onClick={toggleMobileMenu}
-        style={{ 
-          transition: 'opacity 0.3s cubic-bezier(0.785, 0.135, 0.15, 0.86)'
-        }}
-      ></div>
-    </header>
+      // Call API to acquire free product
+      const response = await freeProductService.acquireFreeProduct(course.product_id);
+      
+      // Show success message
+      showToast(
+        'Course added to your account successfully!', 
+        'success'
+      );
+      
+      // Redirect to "My Items" page
+      navigate('/my-items');
+      
+      return true;
+    } catch (error) {
+      // Show error message
+      showToast(
+        error.message || 'Failed to acquire course. Please try again.', 
+        'error'
+      );
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle Paystack payment initialization
+  const initializePaystackPayment = async (productId) => {
+    try {
+      // Initialize payment with the API
+      const response = await paymentService.initializePayment(productId);
+      
+      // Log the full response for debugging
+      console.log('Payment initialization response:', response);
+      
+      // Check if the response is in the expected format
+      if (response && response.status === 'success' && response.data) {
+        const { access_code, reference } = response.data;
+        
+        // Initialize Paystack popup with callbacks
+        const popup = new PaystackPop();
+        popup.resumeTransaction(access_code, {
+          onLoad: (response) => {
+            // Transaction has loaded
+            console.log('Paystack transaction loaded:', response);
+          },
+          onSuccess: (transaction) => {
+            // Payment completed successfully
+            console.log('Payment successful:', transaction);
+            
+            // Show success message
+            showToast('Payment completed successfully!', 'success');
+            
+            // Verify payment with backend (optional)
+            paymentService.verifyPayment(transaction.reference || reference)
+              .then(verificationResponse => {
+                console.log('Payment verification:', verificationResponse);
+                // Redirect to "My Items" or course page
+                navigate('/my-items');
+              })
+              .catch(error => {
+                console.error('Payment verification failed:', error);
+              });
+          },
+          onCancel: () => {
+            // User cancelled the transaction
+            console.log('Payment cancelled by user');
+            showToast('Payment was cancelled.', 'info');
+          },
+          onError: (error) => {
+            // Error during payment
+            console.error('Paystack error:', error);
+            showToast(
+              error.message || 'Payment processing failed. Please try again.',
+              'error'
+            );
+          },
+          onElementsMount: (elements) => {
+            // Elements (like Apple Pay) mounted
+            if (elements) {
+              console.log('Paystack elements mounted:', elements);
+            }
+          }
+        });
+        
+        // Show loading toast
+        showToast(
+          'Payment initialized. Complete the payment in the popup window.',
+          'info'
+        );
+        
+        return true;
+      } else {
+        console.error('Invalid response format:', response);
+        throw new Error('Payment initialization failed - invalid response format');
+      }
+    } catch (error) {
+      console.error('Payment initialization error:', error);
+      showToast(
+        error.message || 'Payment initialization failed. Please try again.',
+        'error'
+      );
+      return false;
+    }
+  };
+  
+  // Handle button click
+  const handleClick = async () => {
+    // If user already has access, navigate to the course content
+    if (hasAccess) {
+      navigate(`/course/${course.product_info.slug}/learn`);
+      return;
+    }
+    
+    // If course is not free, use original functionality
+    if (!isFree()) {
+      // If user is not authenticated, open auth modal
+      if (!isAuthenticated) {
+        setIsAuthModalOpen(true);
+        return;
+      }
+      
+      try {
+        setIsLoading(true);
+        
+        if (isAddToCart) {
+          // Call add to cart callback if provided
+          if (onAddToCart) {
+            await onAddToCart(course);
+          }
+          // Show success message
+          showToast('Course added to cart successfully!', 'success');
+        } else {
+          // Call buy now callback if provided
+          if (onBuyNow) {
+            await onBuyNow(course);
+          }
+          
+          // Initialize Paystack payment instead of redirecting to checkout
+          await initializePaystackPayment(course.product_id);
+        }
+      } catch (error) {
+        showToast(
+          error.message || 'Action failed. Please try again.', 
+          'error'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+      
+      return;
+    }
+    
+    // Free course handling
+    if (!isAuthenticated) {
+      // Open auth modal for login/signup
+      setIsAuthModalOpen(true);
+      return;
+    }
+    
+    // User is authenticated, acquire free product
+    await acquireFreeProduct();
+  };
+  
+  // Handle successful authentication
+  const handleAuthSuccess = async () => {
+    // Verify authentication status
+    const isAuthSuccess = await checkAuthStatus();
+    
+    if (!isAuthSuccess) {
+      showToast('Authentication failed. Please try again.', 'error');
+      return;
+    }
+    
+    // If it's a free course, acquire it
+    if (isFree()) {
+      await acquireFreeProduct();
+    } else if (isAddToCart) {
+      // Add to cart
+      if (onAddToCart) {
+        await onAddToCart(course);
+      }
+      showToast('Course added to cart successfully!', 'success');
+    } else {
+      // Buy now with Paystack
+      if (onBuyNow) {
+        await onBuyNow(course);
+      }
+      
+      // Initialize Paystack payment
+      await initializePaystackPayment(course.product_id);
+    }
+  };
+  
+  // Button text and icon based on button type, course price, and access status
+  const getButtonContent = () => {
+    if (isLoading) {
+      return (
+        <span className="flex items-center justify-center">
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Processing...
+        </span>
+      );
+    }
+    
+    if (hasAccess) {
+      return (
+        <span className="flex items-center justify-center">
+          <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+          Go to Course
+        </span>
+      );
+    }
+    
+    if (isAddToCart) {
+      return (
+        <span className="flex items-center justify-center">
+          <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          Add to Cart
+          <span className="text-xs ml-2 opacity-75">(Continue Shopping)</span>
+        </span>
+      );
+    } else {
+      if (isFree()) {
+        return (
+          <span className="flex items-center justify-center">
+            <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Get for Free
+          </span>
+        );
+      } else {
+        return (
+          <span className="flex items-center justify-center">
+            <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+            Buy Now
+            <span className="text-xs ml-2 opacity-75">(Instant Checkout)</span>
+          </span>
+        );
+      }
+    }
+  };
+  
+  // Don't show "Add to Cart" button if user already has access
+  if (isAddToCart && hasAccess) {
+    return null;
+  }
+  
+  return (
+    <>
+      <button
+        onClick={handleClick}
+        disabled={isLoading}
+        title={isAddToCart ? "Add to cart and continue shopping" : hasAccess ? "Access your course" : "Proceed directly to checkout"}
+        className={`
+          w-full py-3 px-4 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2
+          ${hasAccess 
+            ? 'bg-green-500 hover:bg-green-600 text-white focus:ring-green-500'
+            : isAddToCart
+              ? 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 focus:ring-gray-500'
+              : 'bg-yellow-500 hover:bg-yellow-600 text-gray-900 focus:ring-yellow-500'
+          }
+          ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}
+        `}
+      >
+        {getButtonContent()}
+      </button>
+      
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        redirectPath="/my-items"
+      />
+    </>
   );
 };
 
-// Apply memoization to prevent unnecessary re-renders
-export default memo(Header);
+export default EnrollButton;
+```
+
+### src/components/courses/CourseHeader.jsx
+```
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import EnrollButton from './EnrollButton';
+
+/**
+ * CourseHeader Component
+ * Displays the course title, thumbnail, and key information
+ * 
+ * @param {Object} course - Course object containing details
+ * @param {boolean} hasAccess - Whether the user has access to the course
+ */
+const CourseHeader = ({ course, hasAccess = false }) => {
+  const [imageError, setImageError] = useState(false);
+  const navigate = useNavigate();
+  
+  // Handle image loading error
+  const handleImageError = () => {
+    setImageError(true);
+  };
+  
+  // Format price display
+  const formatPrice = (price) => {
+    // Handle cases where price might be null, undefined, or not a number
+    if (price === null || price === undefined) return 'Price unavailable';
+    
+    // Convert to number if it's a string and check if it's a valid number
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(numPrice)) return 'Price unavailable';
+    
+    // Check for free courses
+    if (numPrice === 0) return 'Free';
+    
+    return `${numPrice.toFixed(2)}`;
+  };
+  
+  // Generate platform badge classes
+  const getPlatformBadges = (platform) => {
+    if (!platform) return [];
+    
+    const platforms = platform.split(',').map(p => p.trim().toUpperCase());
+    
+    return platforms.map(p => {
+      let bgColor = 'bg-gray-100';
+      let textColor = 'text-gray-800';
+      
+      if (p === 'EL') {
+        bgColor = 'bg-blue-100';
+        textColor = 'text-blue-800';
+      } else if (p === 'CH') {
+        bgColor = 'bg-green-100';
+        textColor = 'text-green-800';
+      }
+      
+      return {
+        name: p,
+        className: `${bgColor} ${textColor}`
+      };
+    });
+  };
+  
+  const platformBadges = getPlatformBadges(course.product_info.platform);
+
+  // Handle direct navigation to course content
+  const goToCourse = () => {
+    navigate(`/course/${course.product_info.slug}/learn`);
+  };
+
+  return (
+    <div className="bg-gray-50 py-8 border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Course Thumbnail */}
+          <div className="w-full md:w-1/2 lg:w-2/5">
+            <div className="relative aspect-video bg-gray-200 rounded-lg overflow-hidden">
+              {!imageError ? (
+                <img
+                  src={course.product_info.thumbnail}
+                  alt={course.product_info.title}
+                  className="w-full h-full object-cover"
+                  onError={handleImageError}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                  <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
+              
+              {/* Access Badge */}
+              {hasAccess && (
+                <div className="absolute top-2 right-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    You have access
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Course Info */}
+          <div className="w-full md:w-1/2 lg:w-3/5">
+            {/* Platform Badges */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {platformBadges.map((badge, index) => (
+                <span 
+                  key={index}
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${badge.className}`}
+                >
+                  {badge.name}
+                </span>
+              ))}
+            </div>
+            
+            {/* Course Title */}
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+              {course.product_info.title}
+            </h1>
+            
+            {/* Price */}
+            <div className="mb-6">
+              {!hasAccess ? (
+                <span className="text-2xl font-bold text-yellow-600">
+                  {formatPrice(course.product_info.price)}
+                </span>
+              ) : (
+                <span className="text-lg font-medium text-green-600">
+                  Enrolled
+                </span>
+              )}
+            </div>
+            
+            {/* Short Description - first paragraph only */}
+            <div className="prose prose-sm mb-6 text-gray-700">
+              {course.product_info.description.split('\r\n')[0]}
+            </div>
+            
+            {/* Call to Action */}
+            <div className="flex flex-wrap gap-4">
+              <div className="w-full sm:w-auto">
+                <EnrollButton 
+                  course={course}
+                  hasAccess={hasAccess}
+                  onBuyNow={(course) => console.log('Buy now:', course)}
+                />
+              </div>
+              
+              {!hasAccess && parseFloat(course.product_info.price) > 0 && (
+                <div className="w-full sm:w-auto">
+                  <EnrollButton 
+                    course={course}
+                    hasAccess={hasAccess}
+                    isAddToCart={true}
+                    onAddToCart={(course) => console.log('Add to cart:', course)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CourseHeader;
+```
+
+### src/hooks/useCourseDetail.js
+```
+import { useState, useEffect, useCallback } from 'react';
+import courseService from '../services/api/courseService';
+
+/**
+ * Custom hook to fetch and manage course detail data
+ * 
+ * @param {string} slug - Course slug
+ * @param {boolean} detailed - Whether to fetch detailed course data
+ * @returns {Object} - Object containing course data, loading state, error state, and refetch function
+ */
+const useCourseDetail = (slug, detailed = false) => {
+  const [course, setCourse] = useState(null);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Function to fetch course details from API
+  const fetchCourseDetail = useCallback(async () => {
+    if (!slug) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await courseService.getCourseBySlug(slug, detailed);
+      
+      // Check if response has the expected structure
+      if (response && response.course) {
+        setCourse(response.course);
+        // Set hasAccess from the API response
+        setHasAccess(response.has_access === true);
+      } else {
+        setCourse(null);
+        setHasAccess(false);
+        setError({ 
+          status: 400, 
+          message: 'Unexpected API response format' 
+        });
+      }
+    } catch (err) {
+      setCourse(null);
+      setHasAccess(false);
+      setError({
+        status: err.status || 500,
+        message: err.message || 'An error occurred while fetching the course'
+      });
+      console.error('Failed to fetch course details:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [slug, detailed]);
+
+  // Fetch course when slug changes
+  useEffect(() => {
+    fetchCourseDetail();
+  }, [fetchCourseDetail]);
+
+  return {
+    course,
+    hasAccess,
+    isLoading,
+    error,
+    refetch: fetchCourseDetail
+  };
+};
+
+export default useCourseDetail;
+```
+
+### src/services/api/courseService.js
+```
+/**
+ * Course Service
+ * Centralizes all course-related API calls
+ */
+
+import apiClient from './client';
+import endpoints from './endpoints';
+
+/**
+ * Get a list of courses with optional filtering
+ * 
+ * @param {Object} params - Filter parameters
+ * @param {string} params.platform - Filter by platform (el, ch, el,ch)
+ * @param {boolean} params.is_online - Filter by online status
+ * @param {string} params.display_page - Type of display
+ * @param {string} params.search - Search term
+ * @param {string} params.sort_by - Sort order
+ * @param {number} params.per_page - Number of results per page
+ * @param {number} params.page - Page number
+ * @returns {Promise} - Promise resolving to course data
+ */
+const getCourses = (params = {}) => {
+  return apiClient.get(endpoints.courses.list, params);
+};
+
+/**
+ * Get a specific course by ID
+ * 
+ * @param {number} id - Course ID
+ * @returns {Promise} - Promise resolving to course data
+ */
+const getCourseById = (id) => {
+  return apiClient.get(endpoints.courses.get(id));
+};
+
+/**
+ * Get a specific course by slug
+ * 
+ * @param {string} slug - Course slug
+ * @param {boolean} detailed - Whether to include detailed course data
+ * @returns {Promise} - Promise resolving to course data
+ */
+const getCourseBySlug = (slug, detailed = false) => {
+  return apiClient.get(endpoints.courses.getBySlug(slug), { detailed });
+};
+
+/**
+ * Create a new course (protected endpoint)
+ * 
+ * @param {Object} data - Course data
+ * @returns {Promise} - Promise resolving to created course
+ */
+const createCourse = (data) => {
+  return apiClient.post(endpoints.courses.list, data);
+};
+
+/**
+ * Update an existing course (protected endpoint)
+ * 
+ * @param {number} id - Course ID
+ * @param {Object} data - Updated course data
+ * @returns {Promise} - Promise resolving to updated course
+ */
+const updateCourse = (id, data) => {
+  return apiClient.put(endpoints.courses.get(id), data);
+};
+
+/**
+ * Delete a course (protected endpoint)
+ * 
+ * @param {number} id - Course ID
+ * @returns {Promise} - Promise resolving to success message
+ */
+const deleteCourse = (id) => {
+  return apiClient.delete(endpoints.courses.get(id));
+};
+
+const courseService = {
+  getCourses,
+  getCourseById,
+  getCourseBySlug,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+};
+
+export default courseService;
 ```
 
 ### src/App.js
 ```
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { memo } from 'react';
+import { Suspense, lazy } from 'react';
 import Header from './components/layout/Header';
-import HeroSlider from './components/home/HeroSlider';
-import MarqueeSlider from './components/home/MarqueeSlider';
+import Footer from './components/layout/Footer';
+import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 
-// Memoize any components that rarely change
-const MemoizedMarqueeSlider = memo(MarqueeSlider);
+// Lazy load page components for better performance
+const HomePage = lazy(() => import('./pages/HomePage'));
+const CoursesPage = lazy(() => import('./pages/CoursesPage'));
+const CourseDetailPage = lazy(() => import('./pages/CourseDetailPage'));
+const MyItemsPage = lazy(() => import('./pages/MyItemsPage'));
+// const AboutPage = lazy(() => import('./pages/AboutPage'));
+// const MembershipPage = lazy(() => import('./pages/MembershipPage'));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 function App() {
   return (
-    <div className="bg-white p-4 sm:p-6 lg:p-6 min-h-screen">
-      {/* White border container with rounded corners */}
-      <div className="relative bg-gray-50 min-h-[calc(100vh-32px)] overflow-hidden rounded-3xl lg:rounded-tl-[24px] lg:rounded-tr-lg lg:rounded-br-lg lg:rounded-bl-lg">
+    <AuthProvider>
+      <ToastProvider>
         <Router>
-          <div className="relative font-questrial">
-            {/* Header - fixed at the top when scrolled */}
-            <Header />
-            
-            {/* SVG for top-right corner rounded effect - laptop and desktop only */}
-            <div className="absolute top-20 right-0 z-10 hidden lg:block">
-              <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none">
-                <path fillRule="evenodd" clipRule="evenodd" d="M35 0V35C35 15.67 19.33 0 -1.53184e-05 0H35Z" fill="white"></path>
-              </svg>
-            </div>
-
-            {/* Full width container with sections */}
-            <div className="w-full">
-              {/* Hero section - Full width and full height */}
-              <div className="w-full relative h-screen bg-white">
-                <HeroSlider />
-              </div>
-              
-              {/* CTA Section - Full width white background */}
-              <div className="w-full bg-white py-16 cta-area style-2">
-                <div className="max-w-4xl mx-auto px-4">
-                  <div className="section-title">
-                    <div className="sec-content">
-                      <p className="title text-gray-800
-                        text-4xl leading-tight tracking-tighter
-                        sm:text-5xl sm:leading-snug
-                        md:text-5xl md:leading-relaxed
-                        lg:text-6xl lg:leading-tight lg:tracking-tight
-                        xl:text-center 2xl:text-center">
-                        Our Mission is to provide you with the Tools for the activation and free expression of your innate potentials for the realization of your inner peace. Simple, We are the restorers of PEACE.
-                      </p>
-                    </div>
-                  </div>
+          {/* Header comes first at full width, outside any containers with padding */}
+          <Header />
+          
+          {/* Main content div with padding */}
+          <div className="bg-white p-4 sm:p-6 lg:p-6 min-h-screen">
+            {/* White border container with rounded corners */}
+            <div className="relative bg-gray-50 min-h-[calc(100vh-32px)] overflow-hidden rounded-[30px] ">
+              <div className="relative font-questrial">
+                {/* SVG for top-right corner rounded effect - laptop and desktop only */}
+                <div className="absolute top-20 right-0 z-10 hidden lg:block">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M35 0V35C35 15.67 19.33 0 -1.53184e-05 0H35Z" fill="white"></path>
+                  </svg>
                 </div>
-              </div>
 
-              {/* Marquee Slider - Using memoized component */}
-              <MemoizedMarqueeSlider />
-              
-              {/* Container for other content */}
-              <div className="container mx-auto px-4">
-                {/* Routes content */}
-                <Routes>
-                  <Route path="/" element={<div>{/* Other home page content can go here */}</div>} />
-                  {/* Add more routes as needed */}
-                </Routes>
+                {/* Routes content with Suspense fallback */}
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/courses" element={<CoursesPage />} />
+                    <Route path="/course/:slug" element={<CourseDetailPage />} />
+                    <Route path="/my-items" element={<MyItemsPage />} />
+                    {/* <Route path="/about" element={<AboutPage />} /> */}
+                    {/* <Route path="/membership" element={<MembershipPage />} /> */}
+                    {/* Add more routes as needed */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
               </div>
             </div>
           </div>
+          
+          {/* Footer section */}
+          <Footer />
         </Router>
-      </div>
-    </div>
+      </ToastProvider>
+    </AuthProvider>
   );
 }
+
+// 404 Page
+const NotFound = () => (
+  <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
+    <h1 className="text-6xl font-bold text-yellow-500 mb-4">404</h1>
+    <h2 className="text-3xl font-semibold mb-4">Page Not Found</h2>
+    <p className="text-lg text-gray-600 mb-8">The page you are looking for doesn't exist or has been moved.</p>
+    <a 
+      href="/"
+      className="px-8 py-3 bg-yellow-500 text-gray-900 font-semibold rounded-full hover:bg-gray-900 hover:text-white transition-colors duration-300"
+    >
+      Return Home
+    </a>
+  </div>
+);
 
 export default App;
 ```

@@ -51,7 +51,7 @@ export const menuItems = [
   // Auth states can be expanded later with actual authentication
   export const authLinks = {
     loggedOut: { name: 'Login', path: '/login' },
-    loggedIn: { name: 'My Account', path: '/account' }
+    loggedIn: { name: 'My Account', path: '/my-items' }
   };
   
   // Contact information for mobile menu

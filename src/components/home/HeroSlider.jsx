@@ -1,37 +1,9 @@
 import React, { useState, useCallback, memo, useRef, useEffect } from 'react';
-import heroImage from '../../assets/DSC01280-scaled.jpg';
-import heroImage2 from '../../assets/DSC01281-scaled.jpg';
-import heroImage3 from '../../assets/section-bg-one.jpg';
+import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
 
-// Define slides outside of the component to prevent recreation on each render
-const slides = [
-  { 
-    id: 1, 
-    image: heroImage, 
-    alt: 'Etherean Hero Image',
-    title: 'Welcome to Etherean Life',
-    description: 'Discover tools for activation and free expression of your innate potentials.',
-    ctaText: 'Learn More',
-    ctaLink: '/about'
-  },
-  { 
-    id: 2, 
-    image: heroImage2, 
-    alt: 'Etherean Hero Image 2',
-    title: 'Find Your Inner Peace',
-    description: 'Our mission is to help you realize your inner peace through spiritual growth.',
-    ctaText: 'Join Our Community',
-    ctaLink: '/membership'
-  },
-  { 
-    id: 3, 
-    image: heroImage3, 
-    alt: 'Etherean Hero Image 3',
-    title: 'Welcome to Etherean Life',
-    ctaText: 'Learn More',
-    ctaLink: '/about'
-  },
-];
+// Default fallback image if banner images fail to load
+import fallbackHeroImage from '../../assets/section-bg-one.jpg';
 
 // Custom hook for slider functionality with real-time dragging
 const useSlider = (slides) => {
@@ -42,6 +14,8 @@ const useSlider = (slides) => {
   const [dragOffset, setDragOffset] = useState(0);
   const slidesContainerRef = useRef(null);
   const containerWidth = useRef(0);
+  const autoplayTimerRef = useRef(null);
+  const autoplayInterval = 5000; // 5 seconds between slides
 
   // Update container width on resize
   useEffect(() => {
@@ -56,6 +30,52 @@ const useSlider = (slides) => {
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
+  // Autoplay functionality
+  useEffect(() => {
+    // Only autoplay if we have more than one slide
+    if (slides.length <= 1) return;
+
+    const startAutoplay = () => {
+      autoplayTimerRef.current = setInterval(() => {
+        // Go to next slide, or back to first slide if at the end
+        setCurrentSlide(prevSlide => (prevSlide === slides.length - 1 ? 0 : prevSlide + 1));
+        setIsAnimating(true);
+        setDragOffset(0);
+      }, autoplayInterval);
+    };
+
+    // Start autoplay
+    startAutoplay();
+
+    // Clear interval on unmount
+    return () => {
+      if (autoplayTimerRef.current) {
+        clearInterval(autoplayTimerRef.current);
+      }
+    };
+  }, [slides.length]);
+
+  // Pause autoplay when user interacts with slider
+  const pauseAutoplay = useCallback(() => {
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+    }
+  }, []);
+
+  // Resume autoplay after user interaction
+  const resumeAutoplay = useCallback(() => {
+    pauseAutoplay();
+    
+    // Only autoplay if we have more than one slide
+    if (slides.length <= 1) return;
+    
+    autoplayTimerRef.current = setInterval(() => {
+      setCurrentSlide(prevSlide => (prevSlide === slides.length - 1 ? 0 : prevSlide + 1));
+      setIsAnimating(true);
+      setDragOffset(0);
+    }, autoplayInterval);
+  }, [pauseAutoplay, slides.length]);
+
   // Handle slide transition
   const goToSlide = useCallback((index) => {
     // Only allow going to valid slide indices
@@ -66,19 +86,24 @@ const useSlider = (slides) => {
     
     // Always reset drag offset
     setDragOffset(0);
-  }, [slides.length]);
+    
+    // Reset autoplay when manually changing slides
+    resumeAutoplay();
+  }, [slides.length, resumeAutoplay]);
 
   const nextSlide = useCallback(() => {
     if (!isAnimating) {
-      goToSlide(currentSlide + 1);
+      const newIndex = currentSlide === slides.length - 1 ? 0 : currentSlide + 1;
+      goToSlide(newIndex);
     }
-  }, [currentSlide, isAnimating, goToSlide]);
+  }, [currentSlide, isAnimating, goToSlide, slides.length]);
 
   const prevSlide = useCallback(() => {
     if (!isAnimating) {
-      goToSlide(currentSlide - 1);
+      const newIndex = currentSlide === 0 ? slides.length - 1 : currentSlide - 1;
+      goToSlide(newIndex);
     }
-  }, [currentSlide, isAnimating, goToSlide]);
+  }, [currentSlide, isAnimating, goToSlide, slides.length]);
 
   const handleTransitionEnd = useCallback(() => {
     setIsAnimating(false);
@@ -88,6 +113,7 @@ const useSlider = (slides) => {
   const handleTouchStart = useCallback((e) => {
     if (isAnimating) return;
     
+    pauseAutoplay();
     setIsDragging(true);
     setDragStartX(e.touches[0].clientX);
     
@@ -95,7 +121,7 @@ const useSlider = (slides) => {
     if (slidesContainerRef.current) {
       slidesContainerRef.current.style.transition = 'none';
     }
-  }, [isAnimating]);
+  }, [isAnimating, pauseAutoplay]);
 
   const handleTouchMove = useCallback((e) => {
     if (!isDragging) return;
@@ -127,9 +153,9 @@ const useSlider = (slides) => {
     // If dragged more than 20% of slide width, change slide
     if (Math.abs(dragOffset) > 20) {
       // Check if we're at the edge slides
-      if (dragOffset > 0 && currentSlide < slides.length - 1) {
+      if (dragOffset > 0) {
         nextSlide();
-      } else if (dragOffset < 0 && currentSlide > 0) {
+      } else if (dragOffset < 0) {
         prevSlide();
       } else {
         // At edge, just reset
@@ -141,12 +167,14 @@ const useSlider = (slides) => {
     }
     
     setIsDragging(false);
-  }, [isDragging, dragOffset, nextSlide, prevSlide, currentSlide, slides.length]);
+    resumeAutoplay();
+  }, [isDragging, dragOffset, nextSlide, prevSlide, resumeAutoplay]);
 
   // Mouse events for desktop dragging
   const handleMouseDown = useCallback((e) => {
     if (isAnimating) return;
     
+    pauseAutoplay();
     setIsDragging(true);
     setDragStartX(e.clientX);
     
@@ -157,7 +185,7 @@ const useSlider = (slides) => {
     
     // Prevent default to avoid text selection while dragging
     e.preventDefault();
-  }, [isAnimating]);
+  }, [isAnimating, pauseAutoplay]);
 
   const handleMouseMove = useCallback((e) => {
     if (!isDragging) return;
@@ -192,9 +220,9 @@ const useSlider = (slides) => {
     // If dragged more than 20% of slide width, change slide
     if (Math.abs(dragOffset) > 20) {
       // Check if we're at the edge slides
-      if (dragOffset > 0 && currentSlide < slides.length - 1) {
+      if (dragOffset > 0) {
         nextSlide();
-      } else if (dragOffset < 0 && currentSlide > 0) {
+      } else if (dragOffset < 0) {
         prevSlide();
       } else {
         // At edge, just reset
@@ -206,16 +234,23 @@ const useSlider = (slides) => {
     }
     
     setIsDragging(false);
+    resumeAutoplay();
     
     // Prevent default to maintain consistency
     e.preventDefault();
-  }, [isDragging, dragOffset, nextSlide, prevSlide, currentSlide, slides.length]);
+  }, [isDragging, dragOffset, nextSlide, prevSlide, resumeAutoplay]);
 
   const handleMouseLeave = useCallback((e) => {
     if (isDragging) {
       handleMouseUp(e);
     }
-  }, [isDragging, handleMouseUp]);
+    resumeAutoplay();
+  }, [isDragging, handleMouseUp, resumeAutoplay]);
+
+  // When hover over the slider, pause autoplay
+  const handleMouseEnter = useCallback(() => {
+    pauseAutoplay();
+  }, [pauseAutoplay]);
 
   return {
     currentSlide,
@@ -233,11 +268,45 @@ const useSlider = (slides) => {
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    handleMouseLeave
+    handleMouseLeave,
+    handleMouseEnter,
+    pauseAutoplay,
+    resumeAutoplay,
   };
 };
 
-const HeroSlider = () => {
+/**
+ * Hero Slider Component for displaying banner images
+ * @param {Object} props - Component props
+ * @param {Array} props.banners - Array of banner objects from API
+ * @param {boolean} props.isLoading - Loading state
+ * @param {string|null} props.error - Error message if any
+ */
+const HeroSlider = ({ banners = [], isLoading = false, error = null }) => {
+  // Transform banners to slide format
+  const slides = banners.map(banner => ({
+    id: banner.id,
+    image: banner.image_url,
+    alt: banner.title,
+    title: banner.title,
+    description: banner.description || banner.subtitle, // Use description or fallback to subtitle
+    ctaText: banner.button_text,
+    ctaLink: banner.button_url,
+  }));
+
+  // If no banners are available, show a fallback slide
+  if (slides.length === 0 && !isLoading) {
+    slides.push({
+      id: 'fallback',
+      image: fallbackHeroImage,
+      alt: 'Etherean Life',
+      title: 'Welcome to Etherean Life',
+      description: 'Discover tools for activation and free expression of your innate potentials.',
+      ctaText: 'Learn More',
+      ctaLink: '/about',
+    });
+  }
+
   // Use our custom slider hook
   const {
     currentSlide,
@@ -255,7 +324,8 @@ const HeroSlider = () => {
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    handleMouseLeave
+    handleMouseLeave,
+    handleMouseEnter,
   } = useSlider(slides);
 
   // CTA hover state (not included in the slider hook as it's specific to this UI)
@@ -274,8 +344,40 @@ const HeroSlider = () => {
   // Calculate the transform value based on current slide and drag offset
   const transformValue = `translateX(-${(currentSlide * 100) + dragOffset}%)`;
 
+  // If loading, show a skeleton screen
+  if (isLoading) {
+    return (
+      <div className="relative w-full h-[calc(100vh-40px)] overflow-hidden rounded-b-[30px] bg-gray-200 animate-pulse">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="w-32 h-32 bg-white/30 rounded-full animate-pulse flex items-center justify-center">
+            <div className="w-16 h-16 bg-white/40 rounded-full"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If error, show error message
+  if (error) {
+    return (
+      <div className="relative w-full h-[calc(100vh-40px)] overflow-hidden rounded-b-[30px] bg-gray-100">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-red-500 px-4">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <h2 className="text-2xl font-bold mb-2">Failed to load banners</h2>
+          <p className="text-center max-w-md">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative w-full h-[calc(100vh-40px)] overflow-hidden group rounded-b-[30px]">
+    <div 
+      className="relative w-full h-[calc(100vh-40px)] overflow-hidden group rounded-b-[30px]"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Slides container with animation */}
       <div 
         ref={slidesContainerRef}
@@ -303,7 +405,7 @@ const HeroSlider = () => {
             style={{
               backgroundImage: `url(${slide.image})`,
               backgroundSize: 'cover',
-              backgroundPosition: 'top',
+              backgroundPosition: 'center',
               minHeight: '100vh', // Ensures minimum height of viewport
             }}
             aria-hidden={index !== currentSlide}
@@ -317,46 +419,110 @@ const HeroSlider = () => {
             {/* Slide content */}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4 sm:px-6 lg:px-8">
               <div className="max-w-3xl mx-auto text-center pt-20">
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-4 tracking-tight">
+                {/* Animated title with fade-in effect when active */}
+                <h1 
+                  className={`text-4xl md:text-5xl lg:text-6xl font-bold mb-4 tracking-tight transition-opacity duration-1000 ${
+                    index === currentSlide ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
+                  }`}
+                  style={{ transitionDelay: index === currentSlide ? '300ms' : '0ms' }}
+                >
                   {slide.title}
                 </h1>
+                
+                {/* Animated description with fade-in effect when active */}
                 {slide.description && (
-                  <p className="text-xl md:text-2xl mb-8 max-w-2xl mx-auto">
+                  <p 
+                    className={`text-xl md:text-2xl mb-8 max-w-2xl mx-auto transition-opacity duration-1000 ${
+                      index === currentSlide ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
+                    }`}
+                    style={{ transitionDelay: index === currentSlide ? '500ms' : '0ms' }}
+                  >
                     {slide.description}
                   </p>
                 )}
-                <div className="inline-flex items-center">
-                  <a 
-                    href={slide.ctaLink} 
-                    className={`inline-block font-semibold text-2xl md:text-3xl py-3 px-8 rounded-full transition-colors duration-300 ${
-                      hoveredCTA ? 'bg-white text-[#292929]' : 'bg-yellow-500 text-[#292929]'
-                    }`}
-                    style={{ lineHeight: '1.3' }}
-                    onMouseEnter={handleCTAHoverEnter}
-                    onMouseLeave={handleCTAHoverLeave}
-                  >
-                    {slide.ctaText}
-                  </a>
-                  <a
-                    href={slide.ctaLink}
-                    className={`rounded-full flex items-center justify-center h-14 w-14 transition-colors duration-300 ${
-                      hoveredCTA ? 'bg-white' : 'bg-yellow-500'
-                    }`}
-                    onMouseEnter={handleCTAHoverEnter}
-                    onMouseLeave={handleCTAHoverLeave}
-                  >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className={`h-6 w-6 transform rotate-[315deg] ${
-                        hoveredCTA ? 'text-[#292929]' : 'text-[#292929]'
-                      }`} 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
+                
+                {/* CTA button with fade-in effect when active */}
+                <div 
+                  className={`inline-flex items-center transition-opacity duration-1000 ${
+                    index === currentSlide ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
+                  }`}
+                  style={{ transitionDelay: index === currentSlide ? '700ms' : '0ms' }}
+                >
+                  {/* Use Link for internal links, and 'a' for external links */}
+                  {slide.ctaLink && slide.ctaLink.startsWith('/') ? (
+                    <Link 
+                      to={slide.ctaLink} 
+                      className={`inline-block font-semibold text-2xl md:text-3xl py-3 px-8 rounded-full transition-colors duration-300 ${
+                        hoveredCTA ? 'bg-white text-[#292929]' : 'bg-yellow-500 text-[#292929]'
+                      }`}
+                      style={{ lineHeight: '1.3' }}
+                      onMouseEnter={handleCTAHoverEnter}
+                      onMouseLeave={handleCTAHoverLeave}
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </a>
+                      {slide.ctaText}
+                    </Link>
+                  ) : (
+                    <a 
+                      href={slide.ctaLink} 
+                      className={`inline-block font-semibold text-2xl md:text-3xl py-3 px-8 rounded-full transition-colors duration-300 ${
+                        hoveredCTA ? 'bg-white text-[#292929]' : 'bg-yellow-500 text-[#292929]'
+                      }`}
+                      style={{ lineHeight: '1.3' }}
+                      onMouseEnter={handleCTAHoverEnter}
+                      onMouseLeave={handleCTAHoverLeave}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {slide.ctaText}
+                    </a>
+                  )}
+                  
+                  {/* Arrow icon */}
+                  {slide.ctaLink && slide.ctaLink.startsWith('/') ? (
+                    <Link
+                      to={slide.ctaLink}
+                      className={`rounded-full flex items-center justify-center h-14 w-14 transition-colors duration-300 ${
+                        hoveredCTA ? 'bg-white' : 'bg-yellow-500'
+                      }`}
+                      onMouseEnter={handleCTAHoverEnter}
+                      onMouseLeave={handleCTAHoverLeave}
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className={`h-6 w-6 transform rotate-[315deg] ${
+                          hoveredCTA ? 'text-[#292929]' : 'text-[#292929]'
+                        }`} 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </Link>
+                  ) : (
+                    <a
+                      href={slide.ctaLink}
+                      className={`rounded-full flex items-center justify-center h-14 w-14 transition-colors duration-300 ${
+                        hoveredCTA ? 'bg-white' : 'bg-yellow-500'
+                      }`}
+                      onMouseEnter={handleCTAHoverEnter}
+                      onMouseLeave={handleCTAHoverLeave}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className={`h-6 w-6 transform rotate-[315deg] ${
+                          hoveredCTA ? 'text-[#292929]' : 'text-[#292929]'
+                        }`} 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -372,15 +538,16 @@ const HeroSlider = () => {
         ))}
       </div>
 
-      {/* Left arrow - visible on hover */}
+      {/* Left arrow - visible on hover or always visible on mobile */}
       <button 
         onClick={prevSlide}
-        disabled={isAnimating}
+        disabled={isAnimating || slides.length <= 1}
         className={`
           absolute left-5 top-1/2 transform -translate-y-1/2 
           bg-white/70 hover:bg-white/90 p-2 rounded-full 
-          opacity-0 group-hover:opacity-100 transition-opacity duration-300
-          ${isAnimating ? 'cursor-not-allowed' : 'cursor-pointer'}
+          transition-opacity duration-300
+          md:opacity-0 md:group-hover:opacity-100 opacity-70
+          ${isAnimating || slides.length <= 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
         `}
         aria-label="Previous slide"
       >
@@ -389,15 +556,16 @@ const HeroSlider = () => {
         </svg>
       </button>
 
-      {/* Right arrow - visible on hover */}
+      {/* Right arrow - visible on hover or always visible on mobile */}
       <button 
         onClick={nextSlide}
-        disabled={isAnimating}
+        disabled={isAnimating || slides.length <= 1}
         className={`
           absolute right-5 top-1/2 transform -translate-y-1/2 
           bg-white/70 hover:bg-white/90 p-2 rounded-full 
-          opacity-0 group-hover:opacity-100 transition-opacity duration-300
-          ${isAnimating ? 'cursor-not-allowed' : 'cursor-pointer'}
+          transition-opacity duration-300
+          md:opacity-0 md:group-hover:opacity-100 opacity-70
+          ${isAnimating || slides.length <= 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
         `}
         aria-label="Next slide"
       >
@@ -406,22 +574,40 @@ const HeroSlider = () => {
         </svg>
       </button>
 
-      {/* Slide indicators */}
-      <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => goToSlide(index)}
-            className={`w-3 h-3 rounded-full transition-colors ${
-              index === currentSlide ? 'bg-white' : 'bg-white/50'
-            }`}
-            aria-label={`Go to slide ${index + 1}`}
-            aria-current={index === currentSlide ? 'true' : 'false'}
-          />
-        ))}
-      </div>
+      {/* Slide indicators - only show if we have multiple slides */}
+      {slides.length > 1 && (
+        <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToSlide(index)}
+              className={`w-3 h-3 rounded-full transition-colors duration-300 ${
+                index === currentSlide ? 'bg-white' : 'bg-white/50'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+              aria-current={index === currentSlide ? 'true' : 'false'}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
+};
+
+HeroSlider.propTypes = {
+  banners: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+      title: PropTypes.string.isRequired,
+      subtitle: PropTypes.string,
+      description: PropTypes.string,
+      image_url: PropTypes.string.isRequired,
+      button_text: PropTypes.string,
+      button_url: PropTypes.string,
+    })
+  ),
+  isLoading: PropTypes.bool,
+  error: PropTypes.string,
 };
 
 // Wrap with React.memo to prevent unnecessary re-renders

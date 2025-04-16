@@ -1,18 +1,24 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useScrollPosition from '../../../hooks/useScrollPosition';
 import useMenuState from '../../../hooks/useMenuState';
+import { useAuth } from '../../../contexts/AuthContext';
 import Logo from './components/Logo';
 import DesktopMenu from './components/DesktopMenu';
 import MobileMenu from './components/MobileMenu';
+import AuthModal from '../../auth/AuthModal';
 
 /**
  * Main Header component
  * Combines desktop and mobile navigation
  */
 const Header = () => {
-  // Track if user is logged in (replace with actual auth logic later)
-  const isLoggedIn = false;
+  // Use authentication context instead of hardcoded value
+  const { isAuthenticated } = useAuth();
+  
+  // State for auth modal
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [initialAuthTab, setInitialAuthTab] = useState('login');
   
   // Use custom scroll position hook
   const isScrolled = useScrollPosition(50);
@@ -27,6 +33,18 @@ const Header = () => {
     handleMobileMenuItemClick
   } = useMenuState();
 
+  // Handler for opening auth modal
+  const handleOpenAuthModal = (tab = 'login') => {
+    setInitialAuthTab(tab);
+    setAuthModalOpen(true);
+  };
+
+  // Handler for successful authentication
+  const handleAuthSuccess = () => {
+    // Refresh page or update state as needed
+    closeMobileMenu();
+  };
+
   // Dynamic classes for the header based on scroll state
   const headerClasses = `w-full z-10 transition-all duration-300 ${
     isScrolled 
@@ -39,7 +57,8 @@ const Header = () => {
       {/* Desktop Header */}
       <DesktopMenu 
         isScrolled={isScrolled}
-        isLoggedIn={isLoggedIn}
+        isLoggedIn={isAuthenticated}
+        onLoginClick={() => handleOpenAuthModal('login')}
       />
 
       {/* Mobile/Tablet Header */}
@@ -79,10 +98,19 @@ const Header = () => {
         isOpen={mobileMenuOpen}
         isScrolled={isScrolled}
         expandedItems={expandedItems}
-        isLoggedIn={isLoggedIn}
+        isLoggedIn={isAuthenticated}
         onClose={closeMobileMenu}
         onToggleExpand={toggleExpand}
         onMenuItemClick={handleMobileMenuItemClick}
+        onLoginClick={() => handleOpenAuthModal('login')}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        initialTab={initialAuthTab}
       />
     </header>
   );

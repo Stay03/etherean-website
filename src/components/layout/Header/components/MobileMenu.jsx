@@ -1,5 +1,3 @@
-// src/components/layout/Header/components/MobileMenu.jsx
-
 import React, { memo, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
@@ -18,7 +16,8 @@ const MobileMenu = ({
   isLoggedIn = false,
   onClose,
   onToggleExpand,
-  onMenuItemClick 
+  onMenuItemClick,
+  onLoginClick
 }) => {
   // Reference to the menu for focus trapping
   const menuRef = useRef(null);
@@ -64,6 +63,18 @@ const MobileMenu = ({
       }, 100);
     }
   }, [isOpen]);
+  
+  // Handle auth link click
+  const handleAuthLinkClick = (e) => {
+    // If not logged in and login button is clicked, open modal instead
+    if (!isLoggedIn && authLink.name === 'Login') {
+      e.preventDefault();
+      onClose(); // Close mobile menu
+      onLoginClick(); // Open auth modal
+    } else {
+      onClose(); // Just close the mobile menu
+    }
+  };
 
   return (
     <>
@@ -160,13 +171,23 @@ const MobileMenu = ({
             
             {/* Login/Account Link */}
             <li className="border-b border-gray-700 py-3">
-              <Link
-                to={authLink.path}
-                className="text-yellow-500 hover:text-yellow-400 transition-colors font-medium block"
-                onClick={onClose}
-              >
-                {authLink.name}
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  to={authLink.path}
+                  className="text-yellow-500 hover:text-yellow-400 transition-colors font-medium block"
+                  onClick={onClose}
+                >
+                  {authLink.name}
+                </Link>
+              ) : (
+                <a
+                  href="#"
+                  className="text-yellow-500 hover:text-yellow-400 transition-colors font-medium block"
+                  onClick={handleAuthLinkClick}
+                >
+                  {authLink.name}
+                </a>
+              )}
             </li>
           </ul>
         </nav>
@@ -208,7 +229,8 @@ MobileMenu.propTypes = {
   isLoggedIn: PropTypes.bool,
   onClose: PropTypes.func.isRequired,
   onToggleExpand: PropTypes.func.isRequired,
-  onMenuItemClick: PropTypes.func.isRequired
+  onMenuItemClick: PropTypes.func.isRequired,
+  onLoginClick: PropTypes.func
 };
 
 export default memo(MobileMenu);

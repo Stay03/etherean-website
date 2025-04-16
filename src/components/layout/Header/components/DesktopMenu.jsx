@@ -8,7 +8,7 @@ import Logo from './Logo';
  * Desktop menu component
  * Renders the navigation menu for desktop view with dropdown functionality
  */
-const DesktopMenu = ({ isScrolled = false, isLoggedIn = false }) => {
+const DesktopMenu = ({ isScrolled = false, isLoggedIn = false, onLoginClick }) => {
   // State to track which dropdown is currently open
   const [openDropdown, setOpenDropdown] = useState(null);
   
@@ -24,7 +24,15 @@ const DesktopMenu = ({ isScrolled = false, isLoggedIn = false }) => {
   const handleMouseLeave = () => {
     setOpenDropdown(null);
   };
-  // No longer need click outside handler with hover-based dropdowns
+  
+  // Handle auth link click
+  const handleAuthLinkClick = (e) => {
+    // If not logged in and login button is clicked, open modal instead
+    if (!isLoggedIn && authLink.name === 'Login') {
+      e.preventDefault();
+      onLoginClick();
+    }
+  };
   
   return (
     <div className={`hidden lg:flex ${!isScrolled ? 'py-6' : ''}`}>
@@ -136,12 +144,22 @@ const DesktopMenu = ({ isScrolled = false, isLoggedIn = false }) => {
               </li>
             ))}
             <li className="mx-3 ml-6">
-              <Link
-                to={authLink.path}
-                className="text-yellow-500 hover:text-yellow-600 transition-colors duration-200 font-medium text-lg"
-              >
-                {authLink.name}
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  to={authLink.path}
+                  className="text-yellow-500 hover:text-yellow-600 transition-colors duration-200 font-medium text-lg"
+                >
+                  {authLink.name}
+                </Link>
+              ) : (
+                <a
+                  href="#"
+                  onClick={handleAuthLinkClick}
+                  className="text-yellow-500 hover:text-yellow-600 transition-colors duration-200 font-medium text-lg"
+                >
+                  {authLink.name}
+                </a>
+              )}
             </li>
             <li className="ml-6">
               <button 
@@ -156,14 +174,14 @@ const DesktopMenu = ({ isScrolled = false, isLoggedIn = false }) => {
           </ul>
         </nav>
       </div>
-      {/* No longer need overlay for click detection */}
     </div>
   );
 };
 
 DesktopMenu.propTypes = {
   isScrolled: PropTypes.bool,
-  isLoggedIn: PropTypes.bool
+  isLoggedIn: PropTypes.bool,
+  onLoginClick: PropTypes.func
 };
 
 export default memo(DesktopMenu);

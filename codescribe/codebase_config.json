@@ -5,9 +5,15 @@
     "max_file_size_mb": 5,
     "include_paths": [
 
-        "src/components/home/HeroSlider.jsx",
-        "src/components/layout/Header.jsx",
+        "src/pages/CourseDetailPage.jsx",
+        "src/services/api/client.js",
+        "src/services/api/endpoints.js",
+        "src/components/courses/EnrollButton.jsx",
+        "src/components/courses/CourseHeader.jsx",
+        "src/hooks/useCourseDetail.js",
+        "src/services/api/courseService.js",
         "src/App.js"
+        
 
 
 
