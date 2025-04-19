@@ -4,30 +4,40 @@ import LessonCard from './LessonCard';
 /**
  * LessonGrid Component
  * Displays all course lessons in a grid layout
+ * Now with progression support
  */
-const LessonGrid = ({ sections, onLessonSelect }) => {
+const LessonGrid = ({ 
+  sections, 
+  onLessonSelect, 
+  availableLessons = [],
+  progressionEnabled = false 
+}) => {
   const [filterSection, setFilterSection] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Get filtered and searched lessons
   const getFilteredLessons = () => {
-    // First filter by section if needed
+    // Start with all sections
     let filteredSections = sections;
+    
+    // Filter by section if needed
     if (filterSection !== 'all') {
       filteredSections = sections.filter(section => section.id.toString() === filterSection);
     }
     
-    // Then build lessons with section info
+    // Then build lessons with section info and availability status
     const lessonsWithSections = filteredSections.flatMap(section => 
       (section.lessons || []).map(lesson => ({
         ...lesson,
         sectionTitle: section.title,
         sectionId: section.id,
-        section: section
+        section: section,
+        // Check if lesson is available based on progression
+        isAvailable: !progressionEnabled || availableLessons.some(l => l.id === lesson.id)
       }))
     );
     
-    // Then filter by search term if provided
+    // Apply search term filter if provided
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       return lessonsWithSections.filter(lesson => 
@@ -41,8 +51,13 @@ const LessonGrid = ({ sections, onLessonSelect }) => {
   
   const filteredLessons = getFilteredLessons();
   
+  // Show all lessons, including locked ones, in the grid view
+  const visibleLessons = filteredLessons;
+  
   return (
     <div>
+      
+    
       {/* Filters and search */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between gap-4">
         <div className="flex-1">
@@ -88,20 +103,23 @@ const LessonGrid = ({ sections, onLessonSelect }) => {
       
       {/* Results summary */}
       <div className="mb-4 text-sm text-gray-600">
-        Showing {filteredLessons.length} lessons
+        Showing {visibleLessons.length} lessons
         {filterSection !== 'all' && ' in this section'}
         {searchTerm && ` matching "${searchTerm}"`}
+        {progressionEnabled && ` (${visibleLessons.filter(lesson => lesson.isAvailable).length} available, ${visibleLessons.filter(lesson => !lesson.isAvailable).length} locked)`}
       </div>
       
       {/* Grid layout */}
-      {filteredLessons.length > 0 ? (
+      {visibleLessons.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLessons.map(lesson => (
+          {visibleLessons.map(lesson => (
             <LessonCard
               key={lesson.id}
               lesson={lesson}
               sectionTitle={lesson.sectionTitle}
               onClick={() => onLessonSelect(lesson, lesson.section)}
+              isComplete={lesson.complete}
+              isAvailable={lesson.isAvailable}
             />
           ))}
         </div>

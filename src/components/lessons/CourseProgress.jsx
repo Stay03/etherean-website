@@ -3,41 +3,43 @@ import React from 'react';
 /**
  * CourseProgress Component
  * Displays the user's progress through the course
- * Designed for the sidebar
+ * Uses the progression data from API
  */
 const CourseProgress = ({ course }) => {
-  // For demo purposes - in a real app, this would come from the backend
-  const completedLessons = 0;
-  const completedQuizzes = 0;
-  
-  // Calculate total lessons and quizzes
-  const getTotalLessons = () => {
-    if (!course || !course.sections) return 0;
-    
-    return course.sections.reduce((total, section) => {
-      return total + (section.lessons?.length || 0);
-    }, 0);
+  // Extract progression data from course - fallback to zeros if not available
+  const progression = course?.progression || {
+    total_sections: 0,
+    completed_sections: 0,
+    sections_percentage: 0,
+    total_lessons: 0,
+    completed_lessons: 0,
+    lessons_percentage: 0,
+    total_quizzes: 0,
+    completed_quizzes: 0,
+    quizzes_percentage: 0,
+    overall_percentage: 0
   };
   
-  const getTotalQuizzes = () => {
-    if (!course || !course.quizzes) return 0;
-    return course.quizzes.length;
-  };
-  
-  const totalLessons = getTotalLessons();
-  const totalQuizzes = getTotalQuizzes();
-  
-  // Calculate progress percentages
-  const lessonProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-  const quizProgress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
-  const overallProgress = totalLessons > 0 ? Math.round(((completedLessons + completedQuizzes) / (totalLessons + totalQuizzes)) * 100) : 0;
+  // Destructure the progression data for easier access
+  const {
+    total_sections,
+    completed_sections,
+    sections_percentage,
+    total_lessons,
+    completed_lessons,
+    lessons_percentage,
+    total_quizzes,
+    completed_quizzes,
+    quizzes_percentage,
+    overall_percentage
+  } = progression;
   
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-900">Your Progress</h2>
         <span className="text-xs font-medium text-gray-600">
-          {overallProgress}% Complete
+          {overall_percentage}% Complete
         </span>
       </div>
       
@@ -45,7 +47,7 @@ const CourseProgress = ({ course }) => {
       <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
         <div 
           className="bg-yellow-500 h-2 rounded-full" 
-          style={{ width: `${overallProgress}%` }}
+          style={{ width: `${overall_percentage}%` }}
         ></div>
       </div>
       
@@ -56,58 +58,72 @@ const CourseProgress = ({ course }) => {
           <div className="flex justify-between items-center mb-1 text-xs">
             <span className="text-gray-600">Lessons</span>
             <span className="font-medium text-gray-900">
-              {completedLessons}/{totalLessons}
+              {completed_lessons}/{total_lessons}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-1">
             <div 
               className="bg-blue-500 h-1 rounded-full" 
-              style={{ width: `${lessonProgress}%` }}
+              style={{ width: `${lessons_percentage}%` }}
             ></div>
           </div>
         </div>
         
-        {/* Quizzes progress */}
-        <div>
-          <div className="flex justify-between items-center mb-1 text-xs">
-            <span className="text-gray-600">Quizzes</span>
-            <span className="font-medium text-gray-900">
-              {completedQuizzes}/{totalQuizzes}
-            </span>
+        {/* Quizzes progress - only show if there are quizzes */}
+        {total_quizzes > 0 && (
+          <div>
+            <div className="flex justify-between items-center mb-1 text-xs">
+              <span className="text-gray-600">Quizzes</span>
+              <span className="font-medium text-gray-900">
+                {completed_quizzes}/{total_quizzes}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1">
+              <div 
+                className="bg-green-500 h-1 rounded-full" 
+                style={{ width: `${quizzes_percentage}%` }}
+              ></div>
+            </div>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-1">
-            <div 
-              className="bg-green-500 h-1 rounded-full" 
-              style={{ width: `${quizProgress}%` }}
-            ></div>
-          </div>
-        </div>
+        )}
       </div>
       
       {/* Course stats in a compact format */}
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
         <div className="bg-gray-50 rounded p-2">
           <div className="text-xs text-gray-500">Sections</div>
-          <div className="text-sm font-medium">{course.sections?.length || 0}</div>
+          <div className="text-sm font-medium">{total_sections}</div>
         </div>
         <div className="bg-gray-50 rounded p-2">
           <div className="text-xs text-gray-500">Lessons</div>
-          <div className="text-sm font-medium">{totalLessons}</div>
+          <div className="text-sm font-medium">{total_lessons}</div>
         </div>
-        <div className="bg-gray-50 rounded p-2">
-          <div className="text-xs text-gray-500">Quizzes</div>
-          <div className="text-sm font-medium">{totalQuizzes}</div>
-        </div>
+        {total_quizzes > 0 && (
+          <div className="bg-gray-50 rounded p-2">
+            <div className="text-xs text-gray-500">Quizzes</div>
+            <div className="text-sm font-medium">{total_quizzes}</div>
+          </div>
+        )}
       </div>
       
-      {/* Completion status - very compact */}
-      {completedLessons > 0 ? (
+      {/* Completion status */}
+      {completed_lessons > 0 || completed_quizzes > 0 ? (
         <div className="mt-3 text-xs text-green-600 font-medium text-center">
-          In Progress
+          {overall_percentage === 100 ? "Course Complete!" : "In Progress"}
         </div>
       ) : (
         <div className="mt-3 text-xs text-gray-500 text-center">
           Start your first lesson to track progress
+        </div>
+      )}
+      
+      {/* Next lesson prompt if available */}
+      {course?.next_item && overall_percentage < 100 && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <p className="text-xs text-gray-700">Next up:</p>
+          <p className="text-sm font-medium text-yellow-600 truncate" title={course.next_item.title}>
+            {course.next_item.title}
+          </p>
         </div>
       )}
     </div>

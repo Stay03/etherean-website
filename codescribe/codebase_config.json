@@ -5,13 +5,16 @@
     "max_file_size_mb": 5,
     "include_paths": [
 
-        "src/pages/CourseDetailPage.jsx",
         "src/services/api/client.js",
         "src/services/api/endpoints.js",
-        "src/components/courses/EnrollButton.jsx",
-        "src/components/courses/CourseHeader.jsx",
-        "src/hooks/useCourseDetail.js",
-        "src/services/api/courseService.js",
+        "src/services/api/quizService.js",
+        "src/services/api/quizProgressService.js",
+        "src/components/quiz/QuizManager.jsx",
+        "src/components/quiz/QuizAnswersList.jsx",
+        "src/components/quiz/QuizProgressSummary.jsx",
+        "src/hooks/useQuizProgress.js",
+        "src/hooks/useQuiz.js",
+
         "src/App.js"
         
 

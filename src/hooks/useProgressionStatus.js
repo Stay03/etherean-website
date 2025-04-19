@@ -1,199 +1,174 @@
-{
-    "course": {
-        "id": 85,
-        "product_id": "95",
-        "progression_enabled": "1",
-        "created_at": "2025-04-16T13:03:07.000000Z",
-        "updated_at": "2025-04-16T13:03:07.000000Z",
-        "product_info": {
-            "title": "test course",
-            "slug": "test-course",
-            "price": "0.00",
-            "description": "lol",
-            "thumbnail": "https:\/\/apimagic.xyz\/ethereanAPI\/uploads\/thumbnails\/27373420-2793-474b-87f9-60689d62237e.webp",
-            "platform": "EL"
-        },
-        "sections": [
-            {
-                "id": 81,
-                "title": "First Section",
-                "course_id": "85",
-                "slug": "first-section",
-                "description": null,
-                "created_at": "2025-04-16T13:04:22.000000Z",
-                "updated_at": "2025-04-16T13:04:22.000000Z",
-                "complete": false,
-                "lessons": [
-                    {
-                        "id": 187,
-                        "title": "Lesson One",
-                        "slug": "new-lesson",
-                        "description": "Lol",
-                        "content": "<p>Lorem Ipsu Sit Dolor Amet<\/p>",
-                        "video_url": "https:\/\/www.youtube.com\/watch?v=fN3gdUMB_Yc",
-                        "course_id": "85",
-                        "section_id": "81",
-                        "created_at": "2025-04-16T13:04:31.000000Z",
-                        "updated_at": "2025-04-16T13:08:06.000000Z",
-                        "complete": false,
-                        "quizzes": [
-                            {
-                                "id": 86,
-                                "title": "New Quiz",
-                                "course_id": "85",
-                                "section_id": null,
-                                "lesson_id": "187",
-                                "description": "Quiz for New Lesson",
-                                "created_at": "2025-04-16T13:04:57.000000Z",
-                                "updated_at": "2025-04-16T13:04:57.000000Z",
-                                "complete": false,
-                                "questions": [
-                                    {
-                                        "id": 81,
-                                        "quiz_id": "86",
-                                        "question_text": "Test Question",
-                                        "question_type": "true_false",
-                                        "created_at": "2025-04-16T13:05:35.000000Z",
-                                        "updated_at": "2025-04-16T13:05:35.000000Z",
-                                        "options": [
-                                            {
-                                                "id": 246,
-                                                "quiz_question_id": "81",
-                                                "option_text": "True",
-                                                "is_correct": false,
-                                                "created_at": "2025-04-16T13:05:37.000000Z",
-                                                "updated_at": "2025-04-16T13:05:37.000000Z"
-                                            },
-                                            {
-                                                "id": 247,
-                                                "quiz_question_id": "81",
-                                                "option_text": "False",
-                                                "is_correct": true,
-                                                "created_at": "2025-04-16T13:05:37.000000Z",
-                                                "updated_at": "2025-04-16T13:05:37.000000Z"
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "id": 188,
-                        "title": "Lesson Two",
-                        "slug": "new-lesson",
-                        "description": "Lorem",
-                        "content": "<p>Lorem ipsum<\/p>",
-                        "video_url": "https:\/\/www.youtube.com\/watch?v=Zk7WlWV-8h0",
-                        "course_id": "85",
-                        "section_id": "81",
-                        "created_at": "2025-04-16T13:07:40.000000Z",
-                        "updated_at": "2025-04-16T13:10:37.000000Z",
-                        "complete": false,
-                        "quizzes": [
-                            {
-                                "id": 87,
-                                "title": "New Quiz",
-                                "course_id": "85",
-                                "section_id": null,
-                                "lesson_id": "188",
-                                "description": "Quiz for Lesson Two",
-                                "created_at": "2025-04-16T13:10:57.000000Z",
-                                "updated_at": "2025-04-16T13:10:57.000000Z",
-                                "complete": false,
-                                "questions": [
-                                    {
-                                        "id": 82,
-                                        "quiz_id": "87",
-                                        "question_text": "Question 2",
-                                        "question_type": "true_false",
-                                        "created_at": "2025-04-16T13:11:24.000000Z",
-                                        "updated_at": "2025-04-16T13:11:24.000000Z",
-                                        "options": [
-                                            {
-                                                "id": 248,
-                                                "quiz_question_id": "82",
-                                                "option_text": "False",
-                                                "is_correct": false,
-                                                "created_at": "2025-04-16T13:11:26.000000Z",
-                                                "updated_at": "2025-04-16T13:11:26.000000Z"
-                                            },
-                                            {
-                                                "id": 249,
-                                                "quiz_question_id": "82",
-                                                "option_text": "True",
-                                                "is_correct": true,
-                                                "created_at": "2025-04-16T13:11:26.000000Z",
-                                                "updated_at": "2025-04-16T13:11:26.000000Z"
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "id": 189,
-                        "title": "Lesson Three",
-                        "slug": "new-lesson",
-                        "description": "Lorem",
-                        "content": "<p>Lorem dolor gym nanta<\/p>",
-                        "video_url": "https:\/\/www.youtube.com\/watch?v=TeQDr4DkLYo&t=2s",
-                        "course_id": "85",
-                        "section_id": "81",
-                        "created_at": "2025-04-16T13:09:11.000000Z",
-                        "updated_at": "2025-04-16T13:09:53.000000Z",
-                        "complete": false,
-                        "quizzes": []
-                    }
-                ],
-                "quizzes": []
+import { useMemo } from 'react';
+
+/**
+ * Custom hook to manage course progression logic
+ * Determines which sections and lessons are available based on completion status
+ * 
+ * @param {Object} course - Course data object
+ * @returns {Object} - Object containing progression status information
+ */
+const useProgressionStatus = (course) => {
+  // Calculate available sections and lessons based on progression rules
+  const { availableSections, availableLessons, nextLesson } = useMemo(() => {
+    if (!course) {
+      return { availableSections: [], availableLessons: [], nextLesson: null };
+    }
+    
+    // Check if progression is enabled for this course
+    const progressionEnabled = course.progression_enabled === "1" || course.progression_enabled === 1;
+    
+    // If progression is not enabled, all sections and lessons are available
+    if (!progressionEnabled) {
+      // All sections are available
+      const allSections = course.sections || [];
+      
+      // All lessons are available
+      const allLessons = allSections.flatMap(section => 
+        (section.lessons || []).map(lesson => ({
+          ...lesson,
+          sectionId: section.id,
+          sectionTitle: section.title
+        }))
+      );
+      
+      return { 
+        availableSections: allSections, 
+        availableLessons: allLessons,
+        nextLesson: null // No "next lesson" concept if all are available
+      };
+    }
+    
+    // Helper function to check if all quizzes for a lesson are complete
+    const areAllQuizzesComplete = (lesson) => {
+      if (!lesson.quizzes || lesson.quizzes.length === 0) {
+        // No quizzes to complete
+        return true;
+      }
+      
+      // Check if all quizzes are marked as complete
+      return lesson.quizzes.every(quiz => quiz.complete === true);
+    };
+    
+    // Helper function to check if a lesson is fully complete (both lesson and all quizzes)
+    const isLessonFullyComplete = (lesson) => {
+      return lesson.complete && areAllQuizzesComplete(lesson);
+    };
+    
+    // Progression is enabled - implement progression logic
+    const availableSections = [];
+    const availableLessons = [];
+    let nextLesson = null;
+    let foundIncomplete = false;
+    
+    // Process sections in order
+    (course.sections || []).forEach((section, sectionIndex) => {
+      // First section is always available
+      const isSectionAvailable = sectionIndex === 0 || section.complete || 
+        // Previous section is complete?
+        (sectionIndex > 0 && course.sections[sectionIndex - 1].complete);
+      
+      if (isSectionAvailable) {
+        // Add section to available sections
+        availableSections.push(section);
+        
+        // Process lessons in this section
+        (section.lessons || []).forEach((lesson, lessonIndex) => {
+          // Determine if lesson is available
+          const isLessonAvailable = 
+            // First lesson in first section is always available
+            (sectionIndex === 0 && lessonIndex === 0) || 
+            // Lesson is already complete
+            lesson.complete ||
+            // Previous lesson in same section is fully complete (lesson + quizzes)
+            (lessonIndex > 0 && isLessonFullyComplete(section.lessons[lessonIndex - 1])) ||
+            // First lesson in section and previous section is complete
+            (lessonIndex === 0 && sectionIndex > 0 && course.sections[sectionIndex - 1].complete);
+          
+          if (isLessonAvailable) {
+            availableLessons.push({
+              ...lesson,
+              sectionId: section.id,
+              sectionTitle: section.title
+            });
+            
+            // If this lesson is not fully complete and we haven't found an incomplete lesson yet,
+            // this is the next lesson the user should take
+            if (!isLessonFullyComplete(lesson) && !foundIncomplete) {
+              nextLesson = {
+                ...lesson,
+                sectionId: section.id,
+                sectionTitle: section.title,
+                section: section
+              };
+              foundIncomplete = true;
             }
-        ],
-        "quizzes": [
-            {
-                "id": 86,
-                "title": "New Quiz",
-                "course_id": "85",
-                "section_id": null,
-                "lesson_id": "187",
-                "description": "Quiz for New Lesson",
-                "created_at": "2025-04-16T13:04:57.000000Z",
-                "updated_at": "2025-04-16T13:04:57.000000Z",
-                "complete": false,
-                "questions": [
-                    {
-                        "id": 81,
-                        "quiz_id": "86",
-                        "question_text": "Test Question",
-                        "question_type": "true_false",
-                        "created_at": "2025-04-16T13:05:35.000000Z",
-                        "updated_at": "2025-04-16T13:05:35.000000Z"
-                    }
-                ]
-            },
-            {
-                "id": 87,
-                "title": "New Quiz",
-                "course_id": "85",
-                "section_id": null,
-                "lesson_id": "188",
-                "description": "Quiz for Lesson Two",
-                "created_at": "2025-04-16T13:10:57.000000Z",
-                "updated_at": "2025-04-16T13:10:57.000000Z",
-                "complete": false,
-                "questions": [
-                    {
-                        "id": 82,
-                        "quiz_id": "87",
-                        "question_text": "Question 2",
-                        "question_type": "true_false",
-                        "created_at": "2025-04-16T13:11:24.000000Z",
-                        "updated_at": "2025-04-16T13:11:24.000000Z"
-                    }
-                ]
-            }
-        ]
-    },
-    "has_access": true
-}
+          }
+        });
+      }
+    });
+    
+    // If next_item is provided directly from the API, use it
+    if (course.next_item && !nextLesson) {
+      // Format next_item to match our expected structure
+      const { next_item } = course;
+      
+      if (next_item.type === 'lesson') {
+        // Find the section that contains this lesson
+        const section = course.sections.find(s => s.id === next_item.section_id);
+        
+        if (section) {
+          // Find the lesson within the section
+          const lesson = section.lessons.find(l => l.id === next_item.id);
+          
+          if (lesson) {
+            nextLesson = {
+              ...lesson,
+              sectionId: section.id,
+              sectionTitle: section.title,
+              section: section
+            };
+          }
+        }
+      }
+    }
+    
+    return { availableSections, availableLessons, nextLesson };
+  }, [course]);
+  
+  // Helper function to check if a specific lesson is available
+  const isLessonAvailable = (lessonId) => {
+    return availableLessons.some(lesson => lesson.id === lessonId);
+  };
+  
+  // Helper function to check if a specific section is available
+  const isSectionAvailable = (sectionId) => {
+    return availableSections.some(section => section.id === sectionId);
+  };
+  
+  // Get the overall progression data if available
+  const courseProgress = course?.progression || {
+    total_sections: 0,
+    completed_sections: 0,
+    sections_percentage: 0,
+    total_lessons: 0,
+    completed_lessons: 0, 
+    lessons_percentage: 0,
+    total_quizzes: 0,
+    completed_quizzes: 0,
+    quizzes_percentage: 0,
+    overall_percentage: 0
+  };
+  
+  // Return progression status information
+  return {
+    availableSections,
+    availableLessons,
+    nextLesson,
+    isLessonAvailable,
+    isSectionAvailable,
+    progressionEnabled: course ? (course.progression_enabled === "1" || course.progression_enabled === 1) : false,
+    courseProgress
+  };
+};
+
+export default useProgressionStatus;

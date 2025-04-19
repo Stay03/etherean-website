@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
+import toast from '../../utils/toastConfig'; // Import the custom toast config
 import AuthModal from '../auth/AuthModal';
 import freeProductService from '../../services/api/freeProductService';
 import paymentService from '../../services/api/paymentService';
@@ -10,6 +10,7 @@ import PaystackPop from '@paystack/inline-js';
 /**
  * EnrollButton Component
  * Call-to-action button for course purchase with different states
+ * Updated to use React Toastify
  * 
  * @param {Object} course - Course object
  * @param {boolean} hasAccess - Whether the user already has access to the course
@@ -28,7 +29,6 @@ const EnrollButton = ({
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated, checkAuthStatus } = useAuth();
-  const { showToast } = useToast();
   
   // Check if course is free
   const isFree = () => {
@@ -45,10 +45,7 @@ const EnrollButton = ({
       const response = await freeProductService.acquireFreeProduct(course.product_id);
       
       // Show success message
-      showToast(
-        'Course added to your account successfully!', 
-        'success'
-      );
+      toast.success('Course added to your account successfully!');
       
       // Redirect to "My Items" page
       navigate('/my-items');
@@ -56,10 +53,7 @@ const EnrollButton = ({
       return true;
     } catch (error) {
       // Show error message
-      showToast(
-        error.message || 'Failed to acquire course. Please try again.', 
-        'error'
-      );
+      toast.error(error.message || 'Failed to acquire course. Please try again.');
       
       return false;
     } finally {
@@ -92,7 +86,7 @@ const EnrollButton = ({
             console.log('Payment successful:', transaction);
             
             // Show success message
-            showToast('Payment completed successfully!', 'success');
+            toast.success('Payment completed successfully!');
             
             // Verify payment with backend (optional)
             paymentService.verifyPayment(transaction.reference || reference)
@@ -108,15 +102,12 @@ const EnrollButton = ({
           onCancel: () => {
             // User cancelled the transaction
             console.log('Payment cancelled by user');
-            showToast('Payment was cancelled.', 'info');
+            toast.info('Payment was cancelled.');
           },
           onError: (error) => {
             // Error during payment
             console.error('Paystack error:', error);
-            showToast(
-              error.message || 'Payment processing failed. Please try again.',
-              'error'
-            );
+            toast.error(error.message || 'Payment processing failed. Please try again.');
           },
           onElementsMount: (elements) => {
             // Elements (like Apple Pay) mounted
@@ -127,10 +118,7 @@ const EnrollButton = ({
         });
         
         // Show loading toast
-        showToast(
-          'Payment initialized. Complete the payment in the popup window.',
-          'info'
-        );
+        toast.info('Payment initialized. Complete the payment in the popup window.');
         
         return true;
       } else {
@@ -139,10 +127,7 @@ const EnrollButton = ({
       }
     } catch (error) {
       console.error('Payment initialization error:', error);
-      showToast(
-        error.message || 'Payment initialization failed. Please try again.',
-        'error'
-      );
+      toast.error(error.message || 'Payment initialization failed. Please try again.');
       return false;
     }
   };
@@ -172,7 +157,7 @@ const EnrollButton = ({
             await onAddToCart(course);
           }
           // Show success message
-          showToast('Course added to cart successfully!', 'success');
+          toast.success('Course added to cart successfully!');
         } else {
           // Call buy now callback if provided
           if (onBuyNow) {
@@ -183,10 +168,7 @@ const EnrollButton = ({
           await initializePaystackPayment(course.product_id);
         }
       } catch (error) {
-        showToast(
-          error.message || 'Action failed. Please try again.', 
-          'error'
-        );
+        toast.error(error.message || 'Action failed. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -211,7 +193,7 @@ const EnrollButton = ({
     const isAuthSuccess = await checkAuthStatus();
     
     if (!isAuthSuccess) {
-      showToast('Authentication failed. Please try again.', 'error');
+      toast.error('Authentication failed. Please try again.');
       return;
     }
     
@@ -223,7 +205,7 @@ const EnrollButton = ({
       if (onAddToCart) {
         await onAddToCart(course);
       }
-      showToast('Course added to cart successfully!', 'success');
+      toast.success('Course added to cart successfully!');
     } else {
       // Buy now with Paystack
       if (onBuyNow) {

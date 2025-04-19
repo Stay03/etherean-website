@@ -1,18 +1,18 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import { AuthProvider } from './contexts/AuthContext';
-import { ToastProvider } from './contexts/ToastContext';
+import ScrollToTop from './components/ScrollToTop';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Lazy load page components for better performance
 const HomePage = lazy(() => import('./pages/HomePage'));
 const CoursesPage = lazy(() => import('./pages/CoursesPage'));
 const CourseDetailPage = lazy(() => import('./pages/CourseDetailPage'));
-const CourseLearnPage = lazy(() => import('./pages/CourseLearnPage')); // Add this line
+const CourseLearnPage = lazy(() => import('./pages/CourseLearnPage'));
 const MyItemsPage = lazy(() => import('./pages/MyItemsPage'));
-// const AboutPage = lazy(() => import('./pages/AboutPage'));
-// const MembershipPage = lazy(() => import('./pages/MembershipPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -21,48 +21,72 @@ const PageLoader = () => (
   </div>
 );
 
+// Create a wrapper component that will conditionally render the footer
+const AppContent = () => {
+  const location = useLocation();
+  
+  // Check if the current path is the learning page
+  const isLearningPage = location.pathname.includes('/course/') && location.pathname.includes('/learn');
+  
+  return (
+    <>
+      {/* Header comes first at full width, outside any containers with padding */}
+      <Header />
+      
+      {/* Main content div with padding */}
+      <div className="bg-white p-4 sm:p-6 lg:p-6 min-h-screen">
+        {/* White border container with rounded corners */}
+        <div className="relative bg-gray-50 min-h-[calc(100vh-32px)] overflow-hidden rounded-[30px] ">
+          <div className="relative font-questrial">
+            {/* SVG for top-right corner rounded effect - laptop and desktop only */}
+            <div className="absolute top-20 right-0 z-10 hidden lg:block">
+              <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none">
+                <path fillRule="evenodd" clipRule="evenodd" d="M35 0V35C35 15.67 19.33 0 -1.53184e-05 0H35Z" fill="white"></path>
+              </svg>
+            </div>
+
+            {/* Routes content with Suspense fallback */}
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/courses" element={<CoursesPage />} />
+                <Route path="/course/:slug" element={<CourseDetailPage />} />
+                <Route path="/course/:slug/learn" element={<CourseLearnPage />} />
+                <Route path="/my-items" element={<MyItemsPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </div>
+        </div>
+      </div>
+      
+      {/* Conditionally render footer only when NOT on learning page */}
+      {!isLearningPage && <Footer />}
+      
+      {/* Add ToastContainer for react-toastify */}
+      <ToastContainer 
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+    </>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <Router>
-          {/* Header comes first at full width, outside any containers with padding */}
-          <Header />
-          
-          {/* Main content div with padding */}
-          <div className="bg-white p-4 sm:p-6 lg:p-6 min-h-screen">
-            {/* White border container with rounded corners */}
-            <div className="relative bg-gray-50 min-h-[calc(100vh-32px)] overflow-hidden rounded-[30px] ">
-              <div className="relative font-questrial">
-                {/* SVG for top-right corner rounded effect - laptop and desktop only */}
-                <div className="absolute top-20 right-0 z-10 hidden lg:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35" fill="none">
-                    <path fillRule="evenodd" clipRule="evenodd" d="M35 0V35C35 15.67 19.33 0 -1.53184e-05 0H35Z" fill="white"></path>
-                  </svg>
-                </div>
-
-                {/* Routes content with Suspense fallback */}
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/courses" element={<CoursesPage />} />
-                    <Route path="/course/:slug" element={<CourseDetailPage />} />
-                    <Route path="/course/:slug/learn" element={<CourseLearnPage />} /> {/* Add this line */}
-                    <Route path="/my-items" element={<MyItemsPage />} />
-                    {/* <Route path="/about" element={<AboutPage />} /> */}
-                    {/* <Route path="/membership" element={<MembershipPage />} /> */}
-                    {/* Add more routes as needed */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </div>
-            </div>
-          </div>
-          
-          {/* Footer section */}
-          <Footer />
-        </Router>
-      </ToastProvider>
+      <Router>
+        <ScrollToTop />
+        <AppContent />
+      </Router>
     </AuthProvider>
   );
 }

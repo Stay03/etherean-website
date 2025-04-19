@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
+import toast from '../utils/toastConfig'; // Import the custom toast config
 import apiClient from '../services/api/client';
 
 /**
  * MyItemsPage Component
  * Displays a user's purchased courses, ebooks, and physical products
+ * Updated to use React Toastify
  */
 const MyItemsPage = () => {
   const [products, setProducts] = useState([]);
@@ -15,7 +16,6 @@ const MyItemsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { showToast } = useToast();
   const navigate = useNavigate();
 
   // Fetch user's products
@@ -49,14 +49,14 @@ const MyItemsPage = () => {
       } catch (err) {
         console.error('Failed to fetch user products:', err);
         setError('Failed to load your items. Please try again later.');
-        showToast('Error loading your items', 'error');
+        toast.error('Error loading your items');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchProducts();
-  }, [isAuthenticated, authLoading, navigate, showToast]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   // Filter products by type
   const filterProducts = (filterType) => {
@@ -336,7 +336,6 @@ const MyItemsPage = () => {
                         : `Purchased for $${parseFloat(product.purchase_price).toFixed(2)}`}
                     </span>
                   </div>
-                  
                   {/* Action Button */}
                   {getActionButton(product)}
                 </div>

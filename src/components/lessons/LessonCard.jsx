@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 /**
  * LessonCard Component
- * Displays a lesson in card format for the grid view
+ * Displays a single lesson as a card in the grid view
+ * Now with progression and completion states
  */
-const LessonCard = ({ lesson, sectionTitle, onClick }) => {
-  const [imageError, setImageError] = useState(false);
-  
-  // Extract video thumbnail from YouTube URL if available
-  const getVideoThumbnail = () => {
+const LessonCard = ({ 
+  lesson, 
+  sectionTitle, 
+  onClick,
+  isComplete = false,
+  isAvailable = true 
+}) => {
+  // Extract YouTube thumbnail if video URL exists
+  const getYouTubeThumbnail = () => {
     if (!lesson.video_url) return null;
     
     try {
@@ -25,113 +30,150 @@ const LessonCard = ({ lesson, sectionTitle, onClick }) => {
         }
         
         if (videoId) {
-          return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+          // Use medium quality thumbnail
+          return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
         }
       }
       
-      // Default or unsupported video URL
+      // Not a YouTube URL or format not recognized
       return null;
     } catch (error) {
-      console.error('Error parsing video URL:', error);
+      console.error('Error parsing YouTube URL:', error);
       return null;
     }
   };
   
-  const videoThumbnail = getVideoThumbnail();
-  
-  // Get a random pastel color for cards without thumbnails
-  const getRandomPastelColor = () => {
-    const hue = Math.floor(Math.random() * 360);
-    return `hsl(${hue}, 70%, 80%)`;
-  };
-  
-  const randomColor = React.useMemo(() => getRandomPastelColor(), []);
+  const thumbnailUrl = getYouTubeThumbnail();
   
   return (
     <div 
-      className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-      onClick={onClick}
+      className={`group relative rounded-lg border overflow-hidden shadow-sm transition-all duration-200 ${
+        !isAvailable 
+          ? 'bg-gray-100 border-gray-200 opacity-70 cursor-not-allowed' 
+          : isComplete
+            ? 'bg-white border-green-200 hover:shadow-md cursor-pointer'
+            : 'bg-white border-gray-200 hover:shadow-md cursor-pointer'
+      }`}
+      onClick={() => isAvailable && onClick()}
     >
-      {/* Card thumbnail or placeholder */}
-      <div className="relative aspect-video bg-gray-100">
-        {videoThumbnail && !imageError ? (
-          <img
-            src={videoThumbnail}
-            alt={lesson.title}
-            className="w-full h-full object-cover"
-            onError={() => setImageError(true)}
+      {/* Lesson thumbnail or placeholder */}
+      <div className="relative h-36 bg-gray-200">
+        {thumbnailUrl ? (
+          <img 
+            src={thumbnailUrl} 
+            alt={lesson.title} 
+            className={`w-full h-full object-cover ${!isAvailable ? 'filter grayscale' : ''}`}
           />
         ) : (
-          <div 
-            className="w-full h-full flex items-center justify-center" 
-            style={{ backgroundColor: randomColor }}
-          >
-            {lesson.video_url ? (
-              <svg className="w-12 h-12 text-white opacity-80" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg className="w-12 h-12 text-white opacity-80" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-              </svg>
-            )}
+          <div className={`w-full h-full flex items-center justify-center ${
+            lesson.quizzes && lesson.quizzes.length > 0 
+              ? 'bg-green-50' 
+              : 'bg-blue-50'
+          }`}>
+            <svg 
+              className={`h-12 w-12 ${
+                lesson.quizzes && lesson.quizzes.length > 0 
+                  ? 'text-green-300' 
+                  : 'text-blue-300'
+              }`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              {lesson.quizzes && lesson.quizzes.length > 0 ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              )}
+            </svg>
           </div>
         )}
         
-        {/* Play button for videos */}
+        {/* Play button overlay for video lessons */}
         {lesson.video_url && (
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-16 h-16 rounded-full bg-yellow-500 bg-opacity-90 flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+          <div className={`absolute inset-0 flex items-center justify-center ${
+            isAvailable ? 'bg-black bg-opacity-20 group-hover:bg-opacity-30' : 'bg-black bg-opacity-40'
+          } transition-opacity`}>
+            <div className={`rounded-full p-3 ${
+              isAvailable ? 'bg-white bg-opacity-80 group-hover:bg-opacity-90' : 'bg-white bg-opacity-60'
+            } transition-opacity`}>
+              <svg className="h-8 w-8 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
               </svg>
             </div>
           </div>
         )}
         
-        {/* Section label */}
-        <div className="absolute top-2 left-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-            {sectionTitle}
-          </span>
-        </div>
+        {/* Locked overlay for unavailable lessons */}
+        {!isAvailable && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+            <div className="bg-white rounded-full p-3">
+              <svg className="h-8 w-8 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+          </div>
+        )}
         
-        {/* Lesson indicators */}
-        <div className="absolute bottom-2 right-2 flex space-x-1">
-          {lesson.video_url && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              Video
-            </span>
-          )}
-          {lesson.quizzes && lesson.quizzes.length > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              Quiz
-            </span>
-          )}
-        </div>
+        {/* Completion indicator */}
+        {isComplete && (
+          <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
       </div>
       
-      {/* Card content */}
+      {/* Lesson content */}
       <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
-          {lesson.title}
-        </h3>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <p className="text-xs text-gray-500 mb-1">{sectionTitle}</p>
+            <h3 className={`font-medium line-clamp-2 ${isAvailable ? 'text-gray-900' : 'text-gray-500'}`}>
+              {lesson.title}
+            </h3>
+          </div>
+        </div>
         
+        {/* Lesson description - truncated */}
         {lesson.description && (
-          <p className="text-sm text-gray-600 line-clamp-3 mb-3">
+          <p className={`mt-2 text-sm line-clamp-2 ${isAvailable ? 'text-gray-600' : 'text-gray-400'}`}>
             {lesson.description}
           </p>
         )}
         
-        {/* View button */}
-        <div className="mt-auto">
-          <button className="mt-2 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-            View Lesson
-            <svg className="ml-1 -mr-0.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
+        {/* Lesson badges/tags */}
+        <div className="mt-3 flex items-center space-x-2">
+          {lesson.video_url && (
+            <span className={`px-2 py-0.5 text-xs rounded-full ${
+              isAvailable ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'
+            }`}>
+              Video
+            </span>
+          )}
+          
+          {lesson.quizzes && lesson.quizzes.length > 0 && (
+            <span className={`px-2 py-0.5 text-xs rounded-full ${
+              isAvailable ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
+            }`}>
+              Quiz
+            </span>
+          )}
+          
+          {isComplete ? (
+            <span className="px-2 py-0.5 text-xs rounded-full bg-green-50 text-green-600">
+              Completed
+            </span>
+          ) : !isAvailable ? (
+            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">
+              Locked
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-50 text-yellow-600">
+              Available
+            </span>
+          )}
         </div>
       </div>
     </div>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import useCourseDetail from '../hooks/useCourseDetail';
+import useProgressionStatus from '../hooks/useProgressionStatus';
 import { useAuth } from '../contexts/AuthContext';
+import toast from '../utils/toastConfig'; // Import our custom toast configuration
 import CourseSidebar from '../components/lessons/CourseSidebar';
 import LessonGrid from '../components/lessons/LessonGrid';
 import LessonViewer from '../components/lessons/LessonViewer';
@@ -10,6 +12,7 @@ import Breadcrumb from '../components/Breadcrumb';
 /**
  * CourseLearnPage Component
  * Main page for displaying course content and lessons in learning mode
+ * Now with progression tracking support and custom Toastify integration
  */
 const CourseLearnPage = () => {
   const { slug } = useParams();
@@ -19,6 +22,8 @@ const CourseLearnPage = () => {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'lesson'
+  // Add this flag to prevent auto-navigation when explicitly switching to grid view
+  const [manualGridView, setManualGridView] = useState(false);
   
   // Get lessonId from URL if present
   const searchParams = new URLSearchParams(location.search);
@@ -33,10 +38,21 @@ const CourseLearnPage = () => {
     refetch 
   } = useCourseDetail(slug, true);
 
+  // Use our custom progression hook to determine available content
+  const {
+    availableSections,
+    availableLessons,
+    nextLesson,
+    isLessonAvailable,
+    progressionEnabled,
+    courseProgress
+  } = useProgressionStatus(course);
+
   const breadcrumbItems = [
     { label: 'Home', path: '/' },
     { label: 'Courses', path: '/courses' },
-    { label: course ? course.product_info.title : 'Loading...', path: `/course/${slug}` }
+    { label: course ? course.product_info.title : 'Loading...', path: `/course/${slug}` },
+    { label: 'Learning Area', path: `/course/${slug}/learn` }
   ];
 
   // Redirect to login if not authenticated
@@ -49,56 +65,96 @@ const CourseLearnPage = () => {
   // Redirect to course detail page if user doesn't have access
   useEffect(() => {
     if (!isLoading && !hasAccess && course) {
+      toast.error('You don\'t have access to this course');
       navigate(`/course/${slug}`);
     }
   }, [hasAccess, course, slug, isLoading, navigate]);
 
-  // Find and set selected lesson based on URL param
+  // Effect to handle URL changes
   useEffect(() => {
-    if (course && lessonIdFromUrl) {
-      // Iterate through sections to find the lesson
-      for (const section of course.sections || []) {
-        const lesson = (section.lessons || []).find(l => l.id === parseInt(lessonIdFromUrl));
-        if (lesson) {
-          setSelectedLesson(lesson);
-          setSelectedSection(section);
-          setViewMode('lesson');
-          break;
+    if (!course) return;
+    
+    // If there's a lesson ID in the URL, switch to lesson view
+    if (lessonIdFromUrl) {
+      const lessonId = parseInt(lessonIdFromUrl);
+      
+      // Only select the lesson if it's available in progression or if progression is disabled
+      if (!progressionEnabled || isLessonAvailable(lessonId)) {
+        // Find the lesson and its section
+        for (const section of course.sections || []) {
+          const lesson = (section.lessons || []).find(l => l.id === lessonId);
+          if (lesson) {
+            setSelectedLesson(lesson);
+            setSelectedSection(section);
+            setViewMode('lesson');
+            return; // Exit the effect once we've found and set the lesson
+          }
         }
       }
+      
+      // If lesson not found or not available in progression, redirect to first available lesson
+      if (nextLesson) {
+        toast.info('That lesson is not available yet. Here\'s your next lesson.');
+        navigate(`/course/${slug}/learn?lesson=${nextLesson.id}`, { replace: true });
+      } else {
+        // If no next lesson is available, show grid view
+        setViewMode('grid');
+        setSelectedLesson(null);
+        setSelectedSection(null);
+        navigate(`/course/${slug}/learn`, { replace: true });
+      }
+    } else {
+      // No lesson in URL - show grid view (but don't auto-navigate to next lesson if we explicitly chose grid view)
+      if (!manualGridView && progressionEnabled && nextLesson && viewMode !== 'grid') {
+        // If progression is enabled and no lesson selected, suggest the next lesson
+        navigate(`/course/${slug}/learn?lesson=${nextLesson.id}`, { replace: true });
+      } else {
+        // Otherwise, show grid view
+        setViewMode('grid');
+        setSelectedLesson(null);
+        setSelectedSection(null);
+      }
     }
-  }, [course, lessonIdFromUrl]);
+  }, [course, lessonIdFromUrl, progressionEnabled, nextLesson, isLessonAvailable, slug, navigate, viewMode, manualGridView]);
 
-  // Handle lesson selection
+  // Handle lesson selection with progression check
   const handleLessonSelect = (lesson, section) => {
-    setSelectedLesson(lesson);
-    setSelectedSection(section);
-    setViewMode('lesson');
+    // Reset the manual grid view flag when selecting a lesson
+    setManualGridView(false);
     
-    // Update URL with lesson ID
-    navigate(`/course/${slug}/learn?lesson=${lesson.id}`, { replace: true });
+    // Only allow selecting lessons that are available in progression
+    if (!progressionEnabled || isLessonAvailable(lesson.id)) {
+      setSelectedLesson(lesson);
+      setSelectedSection(section);
+      setViewMode('lesson');
+      
+      // Update URL with lesson ID
+      navigate(`/course/${slug}/learn?lesson=${lesson.id}`, { replace: true });
+    } else {
+      // Show a toast that the lesson is locked
+      toast.warning('This lesson is locked. Complete previous lessons first.');
+    }
   };
 
   // Handle returning to grid view
   const handleBackToGrid = () => {
+    // Set the manual grid view flag to prevent auto-navigation
+    setManualGridView(true);
     setViewMode('grid');
     setSelectedLesson(null);
+    setSelectedSection(null);
     
     // Remove lesson param from URL
     navigate(`/course/${slug}/learn`, { replace: true });
   };
 
-  // Get all lessons from all sections (flattened)
-  const getAllLessons = () => {
-    if (!course || !course.sections) return [];
+  // Handle lesson completion - refresh course data
+  const handleLessonComplete = async (lessonId) => {
+    // Show a success message
+    toast.success('Lesson completed successfully!');
     
-    return course.sections.reduce((allLessons, section) => {
-      return allLessons.concat((section.lessons || []).map(lesson => ({
-        ...lesson,
-        sectionTitle: section.title,
-        sectionId: section.id
-      })));
-    }, []);
+    // Refresh the course data to update progression
+    refetch();
   };
 
   // Handle loading state
@@ -189,12 +245,11 @@ const CourseLearnPage = () => {
   }
 
   return (
-    
     <div className="min-h-screen bg-gray-50">
-                 <Breadcrumb 
-  items={breadcrumbItems} 
-  onNavigate={(path) => navigate(path)} 
-/>
+      <Breadcrumb 
+        items={breadcrumbItems} 
+        onNavigate={(path) => navigate(path)} 
+      />
   
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row">
@@ -205,23 +260,27 @@ const CourseLearnPage = () => {
               selectedLesson={selectedLesson}
               onLessonSelect={handleLessonSelect}
               onBackToGrid={handleBackToGrid}
+              availableSections={availableSections}
+              availableLessons={availableLessons}
+              progressionEnabled={progressionEnabled}
             />
           </div>
 
-         
           {/* Main content area */}
           <div className="w-full lg:w-3/4 p-6">
             {/* Main content - grid or lesson view */}
-            
             <div>
               {viewMode === 'grid' ? (
                 <>
                   <h1 className="text-2xl font-bold text-gray-900 mb-6">
-                    {/* {course.product_info.title} - Course Content */}
+                    {course.product_info.title} - Course Content
                   </h1>
+                  
                   <LessonGrid 
-                    sections={course.sections}
+                    sections={availableSections}
                     onLessonSelect={handleLessonSelect}
+                    availableLessons={availableLessons}
+                    progressionEnabled={progressionEnabled}
                   />
                 </>
               ) : (
@@ -231,6 +290,9 @@ const CourseLearnPage = () => {
                   course={course}
                   onBackToGrid={handleBackToGrid}
                   onNavigate={handleLessonSelect}
+                  availableLessons={availableLessons}
+                  progressionEnabled={progressionEnabled}
+                  onLessonComplete={handleLessonComplete}
                 />
               )}
             </div>

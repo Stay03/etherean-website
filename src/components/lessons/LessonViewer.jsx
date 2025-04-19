@@ -1,41 +1,204 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { BookOpen, CheckCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, 
+         Play, FileText, ArrowLeft, ArrowRight, Award, Clock, AlertTriangle } from 'lucide-react';
+import lessonService from '../../services/api/lessonService';
+import QuizManager from '../quiz/QuizManager';
+import useQuizProgress from '../../hooks/useQuizProgress';
+import QuizProgressSummary from '../quiz/QuizProgressSummary';
+import QuizAnswersList from '../quiz/QuizAnswersList';
 
 /**
- * LessonViewer Component
- * Displays the selected lesson content
+ * Enhanced LessonViewer Component
+ * A modern, interactive UI for viewing lesson content with improved UX
+ * Features:
+ * - Smooth animations and transitions
+ * - Responsive design with improved mobile experience
+ * - Enhanced progress tracking and visualization with fixed progress bar
+ * - Improved quiz experience integration with progress tracking
+ * - Accessibility improvements
+ * - Fixed video position with naturally flowing content
+ * - Uses main app scrolling without nested scrollable areas
+ * - Fixed footer and progress bar at bottom of viewport
  */
-const LessonViewer = ({ lesson, section, course, onBackToGrid, onNavigate }) => {
+const LessonViewer = ({
+  lesson,
+  section,
+  course,
+  onBackToGrid,
+  onNavigate,
+  availableLessons = [],
+  progressionEnabled = false,
+  onLessonComplete = () => {}
+}) => {
   const [activeTab, setActiveTab] = useState('content');
   const [expanded, setExpanded] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState(null);
+  const [quizMode, setQuizMode] = useState(false);
+  const [currentQuiz, setCurrentQuiz] = useState(null);
+  const [isTransitioningToQuiz, setIsTransitioningToQuiz] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const pagePositionRef = useRef(0);
+  const contentRef = useRef(null);
+  
+  // Fetch quiz progress data if we're in quiz tab
+  const {
+    progressData: quizProgressData,
+    hasAttempts: quizHasAttempts,
+    isLoading: isLoadingQuizProgress,
+    error: quizProgressError,
+    refetchProgress: refetchQuizProgress
+  } = useQuizProgress(
+    activeTab === 'quiz' && lesson?.quizzes?.length > 0 
+      ? lesson.quizzes[0].id 
+      : null
+  );
   
   // Reset to content tab when lesson changes
   useEffect(() => {
     setActiveTab('content');
+    setQuizMode(false);
+    setCurrentQuiz(null);
+    setIsTransitioningToQuiz(false);
+    
+    // Track that user started the lesson
+    if (lesson?.id) {
+      trackLessonStart(lesson.id);
+    }
   }, [lesson?.id]);
+
+  // Track scroll progress based on main window scroll
+  const [readProgress, setReadProgress] = useState(0);
+  
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!contentRef.current) return;
+      
+      const element = contentRef.current;
+      const elementRect = element.getBoundingClientRect();
+      const elementTop = elementRect.top;
+      const elementHeight = element.offsetHeight;
+      const windowHeight = window.innerHeight;
+      const documentHeight = Math.max(
+        document.body.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.clientHeight,
+        document.documentElement.scrollHeight,
+        document.documentElement.offsetHeight
+      );
+      
+      // Calculate how far down the page we've scrolled as a percentage
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollPercent = (scrollTop / (documentHeight - windowHeight)) * 100;
+      
+      // If lesson content is in view, also factor in how much of it is visible
+      if (elementTop < windowHeight && elementTop + elementHeight > 0) {
+        // How much of the element has passed through the viewport
+        const visiblePercent = Math.min(
+          ((windowHeight - elementTop) / elementHeight) * 100, 
+          100
+        );
+        
+        // Use a weighted approach that favors overall scroll progress
+        // but also considers content visibility
+        const weightedProgress = (scrollPercent * 0.7) + (visiblePercent * 0.3);
+        setReadProgress(Math.min(Math.max(weightedProgress, 0), 100));
+      } else {
+        // If lesson content isn't in view yet, just use scroll position
+        setReadProgress(Math.min(Math.max(scrollPercent, 0), 100));
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    // Initial calculation
+    handleScroll();
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [activeTab]);
+  
+  // Track that user started the lesson
+  const trackLessonStart = async (lessonId) => {
+    try {
+      await lessonService.startLesson(lessonId);
+    } catch (error) {
+      console.error('Error tracking lesson start:', error);
+    }
+  };
+  
+  // Function to safely enter quiz mode and prevent duplicate transitions
+  const enterQuizMode = (quizData) => {
+    if (isTransitioningToQuiz || quizMode) return;
+    
+    setIsTransitioningToQuiz(true);
+    
+    setTimeout(() => {
+      setCurrentQuiz(quizData);
+      setQuizMode(true);
+      setIsTransitioningToQuiz(false);
+    }, 100);
+  };
+  
+  // Check if the current quiz has been started by the user
+  const isQuizStarted = (quiz) => {
+    if (!quiz || !quiz.questions) return false;
+    return quiz.questions.some(question => question.user_answer != null);
+  };
+  
+  // Get the number of answered questions for the current quiz
+  const getAnsweredQuestionsCount = (quiz) => {
+    if (!quiz || !quiz.questions) return 0;
+    return quiz.questions.filter(question => question.user_answer != null).length;
+  };
+
+  // Handle tab change with scroll position preservation
+  const handleTabChange = (tabName) => {
+    pagePositionRef.current = window.scrollY;
+    setActiveTab(tabName);
+    
+    // If changing to quiz tab, refresh quiz progress data
+    if (tabName === 'quiz' && lesson?.quizzes?.length > 0) {
+      refetchQuizProgress();
+    }
+    
+    setTimeout(() => {
+      window.scrollTo(0, pagePositionRef.current);
+    }, 10);
+  };
   
   if (!lesson || !section || !course) {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-        <svg className="mx-auto h-12 w-12 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-        <h3 className="mt-3 text-lg font-medium text-yellow-800">No Lesson Selected</h3>
-        <p className="mt-2 text-yellow-700">
-          Please select a lesson from the sidebar or grid view.
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center shadow-sm"
+      >
+        <AlertTriangle className="mx-auto h-12 w-12 text-amber-500" />
+        <h3 className="mt-4 text-xl font-semibold text-amber-800">No Lesson Selected</h3>
+        <p className="mt-3 text-amber-700">
+          Please select a lesson from the sidebar or grid view to begin learning.
         </p>
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={onBackToGrid}
-          className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+          className="mt-6 inline-flex items-center px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
         >
+          <ArrowLeft className="mr-2 h-5 w-5" />
           Back to Grid View
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
     );
   }
+
+  // Check if a lesson is available (for progression)
+  const isLessonAvailable = (lessonId) => {
+    if (!progressionEnabled) return true;
+    return availableLessons.some(lesson => lesson.id === lessonId);
+  };
   
   // Find next and previous lessons
   const getAdjacentLessons = () => {
-    // Get all lessons from all sections in order
     const allLessons = course.sections.flatMap(s => 
       (s.lessons || []).map(l => ({
         ...l,
@@ -44,271 +207,743 @@ const LessonViewer = ({ lesson, section, course, onBackToGrid, onNavigate }) => 
       }))
     );
     
-    // Find current lesson index
     const currentIndex = allLessons.findIndex(l => l.id === lesson.id);
     
-    return {
-      prev: currentIndex > 0 ? allLessons[currentIndex - 1] : null,
-      next: currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
-    };
+    let prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+    let nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+    
+    if (progressionEnabled) {
+      if (prevLesson && !isLessonAvailable(prevLesson.id)) {
+        prevLesson = null;
+      }
+      
+      if (nextLesson && !isLessonAvailable(nextLesson.id)) {
+        nextLesson = null;
+      }
+    }
+    
+    return { prev: prevLesson, next: nextLesson };
   };
   
   const { prev, next } = getAdjacentLessons();
   
+  // Handle completing the lesson
+  const handleCompleteLesson = async () => {
+    if (isCompleting || lesson.complete) return;
+    
+    setIsCompleting(true);
+    setCompletionError(null);
+    
+    try {
+      await lessonService.markLessonComplete(lesson.id);
+      
+      lesson.complete = true;
+      onLessonComplete(lesson.id);
+      
+      // Show confetti animation for completion
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+      
+      if (lesson.quizzes && lesson.quizzes.length > 0) {
+        setTimeout(() => {
+          enterQuizMode(lesson.quizzes[0]);
+        }, 1000);
+      } else {
+        if (next) {
+          setTimeout(() => {
+            onNavigate(next, next.section);
+          }, 1500);
+        }
+      }
+    } catch (error) {
+      console.error('Error completing lesson:', error);
+      setCompletionError('Failed to mark lesson as complete. Please try again.');
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  // Handle quiz completion
+  const handleQuizComplete = (results) => {
+    setShowConfetti(true);
+    setTimeout(() => {
+      setShowConfetti(false);
+      if (next) {
+        onNavigate(next, next.section);
+      } else {
+        setQuizMode(false);
+      }
+    }, 2000);
+  };
+  
   // Extract YouTube video ID if present
-  const getYouTubeEmbedUrl = () => {
+  const getVideoEmbedUrl = () => {
     if (!lesson.video_url) return null;
     
     try {
-      // Handle YouTube URLs
+      // YouTube handling
       if (lesson.video_url.includes('youtube.com') || lesson.video_url.includes('youtu.be')) {
         let videoId = '';
         
         if (lesson.video_url.includes('v=')) {
-          // Format: youtube.com/watch?v=VIDEO_ID
           videoId = lesson.video_url.split('v=')[1].split('&')[0];
         } else if (lesson.video_url.includes('youtu.be')) {
-          // Format: youtu.be/VIDEO_ID
           videoId = lesson.video_url.split('youtu.be/')[1].split('?')[0];
         }
         
         if (videoId) {
-          return `https://www.youtube.com/embed/${videoId}`;
+          return `https://www.youtube.com/embed/${videoId}?rel=0`;
         }
       }
       
-      // Not a YouTube URL or format not recognized
+      // Vimeo handling
+      if (lesson.video_url.includes('vimeo.com')) {
+        // Handle URLs with path parameters like: vimeo.com/1059520688/76e33ebd54
+        const complexVimeoRegex = /vimeo\.com\/(\d+)\/([a-zA-Z0-9]+)/;
+        const complexMatch = lesson.video_url.match(complexVimeoRegex);
+        
+        if (complexMatch && complexMatch[1] && complexMatch[2]) {
+          return `https://player.vimeo.com/video/${complexMatch[1]}?h=${complexMatch[2]}&title=0&byline=0&portrait=0&badge=0&autopause=0`;
+        }
+        
+        // Handle standard URLs like: vimeo.com/12345678
+        const standardVimeoRegex = /vimeo\.com\/(\d+)/;
+        const standardMatch = lesson.video_url.match(standardVimeoRegex);
+        
+        if (standardMatch && standardMatch[1]) {
+          return `https://player.vimeo.com/video/${standardMatch[1]}?title=0&byline=0&portrait=0&badge=0&autopause=0`;
+        }
+        
+        // If the URL already contains the embed format, return it directly with essential parameters
+        if (lesson.video_url.includes('player.vimeo.com/video/')) {
+          // Add essential parameters if they're not already present
+          const url = new URL(lesson.video_url);
+          url.searchParams.set('title', '0');
+          url.searchParams.set('byline', '0');
+          url.searchParams.set('portrait', '0');
+          url.searchParams.set('badge', '0');
+          url.searchParams.set('autopause', '0');
+          return url.toString();
+        }
+      }
+      
       return null;
     } catch (error) {
-      console.error('Error parsing YouTube URL:', error);
+      console.error('Error parsing video URL:', error);
       return null;
     }
   };
   
-  const youtubeEmbedUrl = getYouTubeEmbedUrl();
+  // Then in your JSX, replace all instances of youtubeEmbedUrl with videoEmbedUrl:
+  const videoEmbedUrl = getVideoEmbedUrl();
+ 
+  
+  
+  // Determine if the current quiz has been started but not completed
+  const currentQuizStarted = lesson.quizzes && lesson.quizzes.length > 0 
+    ? isQuizStarted(lesson.quizzes[0]) 
+    : false;
+  
+  // Get the number of answered questions for the first quiz
+  const answeredQuestionsCount = lesson.quizzes && lesson.quizzes.length > 0 
+    ? getAnsweredQuestionsCount(lesson.quizzes[0]) 
+    : 0;
+  
+  const totalQuestionsCount = lesson.quizzes && lesson.quizzes.length > 0 
+    ? lesson.quizzes[0].questions.length 
+    : 0;
+  
+  // If in quiz mode, show the quiz manager
+  if (quizMode && currentQuiz) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-md"
+      >
+        {showConfetti && <Confetti />}
+        
+        <div className="bg-gradient-to-r from-amber-50 to-amber-100 p-4 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <div className="flex items-center">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setQuizMode(false)}
+                    className="mr-3 text-gray-500 hover:text-amber-600 transition-colors"
+                    aria-label="Back to lesson"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </motion.button>
+                <h1 className="text-xl font-bold text-gray-900 truncate" title={currentQuiz.title}>
+                  {currentQuiz.title}
+                </h1>
+              </div>
+              <p className="mt-1 text-sm text-gray-600">
+                From: <span className="font-medium">{lesson.title}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <QuizManager 
+          quiz={currentQuiz}
+          onComplete={handleQuizComplete}
+          onReturn={() => setQuizMode(false)}
+        />
+      </motion.div>
+    );
+  }
   
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-md relative"
+    >
+      {showConfetti && <Confetti />}
+      
       {/* Lesson Header */}
-      <div className="bg-gray-50 p-4 border-b border-gray-200">
+      <div className="bg-gradient-to-r from-amber-50 to-amber-100 p-4 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <div className="flex items-center">
-              <button
-                onClick={onBackToGrid}
-                className="mr-3 text-gray-500 hover:text-gray-700"
-                title="Back to grid view"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={onBackToGrid}
+                  className="mr-3 text-gray-500 hover:text-amber-600 transition-colors"
+                  aria-label="Back to grid view"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </motion.button>
               <h1 className="text-xl font-bold text-gray-900 truncate" title={lesson.title}>
                 {lesson.title}
               </h1>
+              {lesson.complete && (
+                <motion.span 
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                >
+                  <CheckCircle className="mr-1 h-3 w-3" />
+                  Completed
+                </motion.span>
+              )}
             </div>
-            <p className="mt-1 text-sm text-gray-600">
-              From: <span className="font-medium">{section.title}</span>
-            </p>
+            <div className="mt-1 flex items-center text-sm text-gray-600">
+              <BookOpen className="mr-1.5 h-4 w-4 text-amber-500" />
+              <span className="font-medium">{section.title}</span>
+              <span className="mx-2">•</span>
+              <span>{course.title}</span>
+            </div>
           </div>
           
           {/* Navigation buttons */}
           <div className="flex space-x-2">
             {prev && (
-              <button
-                onClick={() => onNavigate(prev, prev.section)}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                title={prev.title}
-              >
-                <svg className="mr-1.5 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                Previous
-              </button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onNavigate(prev, prev.section)}
+                  className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                >
+                  <ChevronLeft className="mr-1.5 -ml-1 h-5 w-5" />
+                  Previous
+                </motion.button>
             )}
             
             {next && (
-              <button
-                onClick={() => onNavigate(next, next.section)}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                title={next.title}
-              >
-                Next
-                <svg className="ml-1.5 -mr-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onNavigate(next, next.section)}
+                  className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                >
+                  Next
+                  <ChevronRight className="ml-1.5 -mr-1 h-5 w-5" />
+                </motion.button>
             )}
           </div>
         </div>
       </div>
       
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8 px-6">
-          <button
-            className={`
-              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-              ${activeTab === 'content' 
-                ? 'border-yellow-500 text-yellow-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
-            `}
-            onClick={() => setActiveTab('content')}
-          >
-            Lesson Content
-          </button>
-          
-          {lesson.quizzes && lesson.quizzes.length > 0 && (
+      {/* Tabs - only show quiz tab if there are quizzes */}
+      {lesson.quizzes && lesson.quizzes.length > 0 ? (
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8 px-6">
             <button
               className={`
-                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                ${activeTab === 'quiz' 
-                  ? 'border-yellow-500 text-yellow-600' 
+                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors
+                ${activeTab === 'content' 
+                  ? 'border-amber-500 text-amber-600' 
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
               `}
-              onClick={() => setActiveTab('quiz')}
+              onClick={() => handleTabChange('content')}
             >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Lesson Content
+            </button>
+            
+            <button
+              className={`
+                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors
+                ${activeTab === 'quiz' 
+                  ? 'border-amber-500 text-amber-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+              `}
+              onClick={() => handleTabChange('quiz')}
+            >
+              <FileText className="mr-2 h-4 w-4" />
               Quiz
               <span className="ml-2 py-0.5 px-2 text-xs rounded-full bg-green-100 text-green-800">
                 {lesson.quizzes.length}
               </span>
+              
+              {/* Show quiz complete badge if the quiz is marked as complete in the lesson data */}
+              {lesson.quizzes[0].complete && (
+                <span className="ml-2 py-0.5 px-2 text-xs rounded-full bg-green-100 text-green-800">
+                  <CheckCircle className="inline-block h-3 w-3 mr-1" />
+                  Complete
+                </span>
+              )}
+              
+              {/* Show progress badge if in progress */}
+              {!lesson.quizzes[0].complete && quizHasAttempts && quizProgressData?.data?.progress_percentage > 0 && (
+                <span className="ml-2 py-0.5 px-2 text-xs rounded-full bg-blue-100 text-blue-800">
+                  {quizProgressData.data.progress_percentage}%
+                </span>
+              )}
             </button>
-          )}
-        </nav>
-      </div>
+          </nav>
+        </div>
+      ) : null}
       
-      {/* Content Area */}
-      <div className="p-6">
-        {activeTab === 'content' && (
-          <div>
-            {/* Video Content */}
-            {youtubeEmbedUrl && (
-              <div className="mb-6">
-                <div className="relative pt-[56.25%]">
-                  <iframe
-                    className="absolute top-0 left-0 w-full h-full rounded-lg"
-                    src={youtubeEmbedUrl}
-                    title={lesson.title}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
-                </div>
+      {/* Content Section */}
+      {activeTab === 'content' && (
+        <div ref={contentRef} className="flex flex-col">
+          {/* Video Content */}
+          {videoEmbedUrl && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="p-6 pb-0"
+            >
+              <div className="relative pt-[56.25%] rounded-xl overflow-hidden shadow-md">
+                <iframe
+                  className="absolute top-0 left-0 w-full h-full"
+                  src={videoEmbedUrl}
+                  title={lesson.title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
               </div>
-            )}
-            
+            </motion.div>
+          )}
+          
+          {/* Text Content */}
+          <div className="p-6">
             {/* Description */}
             {lesson.description && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">About this lesson</h3>
-                <div className={`prose prose-yellow ${expanded ? '' : 'max-h-32 overflow-hidden relative'}`}>
-                  <p>{lesson.description}</p>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mb-6"
+              >
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+                  <BookOpen className="mr-2 h-5 w-5 text-amber-500" />
+                  About this lesson
+                </h3>
+                <div className={`prose prose-amber ${expanded ? '' : 'max-h-32 overflow-hidden relative'}`}>
+                  <p className="text-gray-700">{lesson.description}</p>
+                  {!expanded && lesson.description.length > 150 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white"></div>
+                  )}
                 </div>
                 
                 {lesson.description.length > 150 && (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setExpanded(!expanded)}
-                    className="mt-2 text-yellow-600 hover:text-yellow-700 text-sm font-medium flex items-center"
+                    className="mt-2 text-amber-600 hover:text-amber-700 text-sm font-medium flex items-center transition-colors"
                   >
                     {expanded ? 'Show less' : 'Show more'}
-                    <svg
-                      className={`ml-1 h-5 w-5 transform ${expanded ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                    {expanded ? 
+                      <ChevronUp className="ml-1 h-4 w-4" /> : 
+                      <ChevronDown className="ml-1 h-4 w-4" />
+                    }
+                  </motion.button>
                 )}
-              </div>
+              </motion.div>
             )}
             
             {/* Content */}
             {lesson.content && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Lesson Content</h3>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mb-6"
+              >
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+                  <FileText className="mr-2 h-5 w-5 text-amber-500" />
+                  Lesson Content
+                </h3>
                 <div 
-                  className="prose prose-yellow max-w-none" 
+                  className="prose prose-amber max-w-none prose-headings:text-amber-900 prose-a:text-amber-600 prose-strong:text-amber-700"
                   dangerouslySetInnerHTML={{ __html: lesson.content }}
                 />
-              </div>
+              </motion.div>
             )}
             
-            {/* Additional Resources (placeholder) */}
-            <div className="bg-gray-50 rounded-lg p-4 mt-8">
-              <h3 className="text-sm font-medium text-gray-900">Additional Resources</h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Complete this lesson and any associated quizzes to track your progress.
-              </p>
-            </div>
+            {/* Progress tracking information */}
+            {progressionEnabled && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className={`p-4 mt-8 rounded-lg ${
+                  lesson.complete ? 'bg-green-50 border border-green-100' : 'bg-amber-50 border border-amber-100'
+                }`}
+              >
+                <div className="flex items-start">
+                  <div className={`p-2 rounded-full ${lesson.complete ? 'bg-green-100' : 'bg-amber-100'}`}>
+                    {lesson.complete ? 
+                      <CheckCircle className="h-6 w-6 text-green-500" /> : 
+                      <Play className="h-6 w-6 text-amber-500" />
+                    }
+                  </div>
+                  <div className="ml-3">
+                    <h3 className={`text-sm font-medium ${lesson.complete ? 'text-green-800' : 'text-amber-800'}`}>
+                      {lesson.complete ? 'Lesson Completed' : 'Mark as Complete to Progress'}
+                    </h3>
+                    <div className={`mt-2 text-sm ${lesson.complete ? 'text-green-700' : 'text-amber-700'}`}>
+                      {lesson.complete ? (
+                        lesson.quizzes && lesson.quizzes.length > 0 ? (
+                          <p>You have completed this lesson. Take the quiz to test your knowledge.</p>
+                        ) : (
+                          <p>You have completed this lesson. Continue to the next lesson to progress in the course.</p>
+                        )
+                      ) : (
+                        <p>Complete this lesson to unlock the next content in this course.</p>
+                      )}
+                    </div>
+                    
+                    {lesson.complete && lesson.quizzes && lesson.quizzes.length > 0 && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleTabChange('quiz')}
+                        className="mt-3 inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
+                      >
+                        Take Quiz Now
+                        <ArrowRight className="ml-1.5 h-4 w-4" />
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            
+            {/* Add padding at the bottom to prevent content from being hidden behind fixed elements */}
+            <div className="pb-36"></div>
           </div>
-        )}
+        </div>
+      )}
+      
+      {/* Quiz Tab Content */}
+      {/* Quiz Tab Content */}
+{activeTab === 'quiz' && !quizMode && (
+  <motion.div 
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    className="px-6 py-6"
+  >
+    {/* Show loading indicator while fetching data */}
+    {isLoadingQuizProgress && (
+      <div className="flex justify-center items-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
+      </div>
+    )}
+    
+    {/* Show quiz progress summary when data is available */}
+    {!isLoadingQuizProgress && quizProgressData && (
+      <>
+        <QuizProgressSummary 
+          progressData={quizProgressData}
+          isLoading={false}
+          error={quizProgressError}
+        />
         
-        {activeTab === 'quiz' && lesson.quizzes && lesson.quizzes.length > 0 && (
-          <div>
-            {/* Quiz content would be implemented here */}
-            <div className="bg-green-50 rounded-lg p-6 text-center">
-              <svg className="mx-auto h-12 w-12 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h3 className="mt-3 text-lg font-medium text-green-800">Quiz Available</h3>
-              <p className="mt-2 text-green-700">
-                This lesson has {lesson.quizzes.length} quiz{lesson.quizzes.length > 1 ? 'zes' : ''} available.
-              </p>
-              <p className="mt-1 text-sm text-green-600">
-                Quiz functionality would be implemented here.
-              </p>
-              <p className="mt-4 text-xs text-green-500">
-                Quiz Title: {lesson.quizzes[0].title}
-              </p>
-            </div>
-          </div>
+        {/* Only show answers list when we have attempt data */}
+        {quizProgressData && quizProgressData.attempt && (
+          <QuizAnswersList progressData={quizProgressData} />
+        )}
+      </>
+    )}
+    
+    {/* Quiz Actions - Only show this section if we don't have quizProgressData yet or if lesson is not complete */}
+    {(!quizProgressData || !lesson.complete) && (
+  <motion.div 
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    className="text-center py-6 flex-1"
+  >
+    <motion.div 
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ delay: 0.2 }}
+      className="mb-6"
+    >
+      <div className="mx-auto h-20 w-20 rounded-full bg-amber-100 flex items-center justify-center">
+        {!lesson.complete ? (
+          <AlertTriangle className="h-10 w-10 text-amber-500" />
+        ) : quizProgressData?.is_completed ? (
+          <Award className="h-10 w-10 text-green-500" />
+        ) : quizHasAttempts ? (
+          <Clock className="h-10 w-10 text-blue-500" />
+        ) : (
+          <Award className="h-10 w-10 text-amber-500" />
         )}
       </div>
+    </motion.div>
+    
+    <motion.h3 
+      initial={{ y: 20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ delay: 0.3 }}
+      className="text-xl font-semibold text-gray-900 mb-2"
+    >
+      {!lesson.complete 
+        ? "Complete the lesson first"
+        : quizProgressData?.is_completed
+          ? "Quiz Completed"
+          : quizHasAttempts
+            ? "Continue Your Quiz"
+            : "Ready to Test Your Knowledge?"}
+    </motion.h3>
+    
+    <motion.p 
+      initial={{ y: 20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ delay: 0.4 }}
+      className="text-gray-600 mb-6 max-w-md mx-auto"
+    >
+      {!lesson.complete 
+        ? "You need to complete this lesson before taking the quiz."
+        : quizProgressData?.is_completed
+          ? "You've completed this quiz. Review your answers and results below."
+          : quizHasAttempts
+            ? "You've already started this quiz. You can continue where you left off!"
+            : "Take this quiz to check your understanding of the lesson material."}
+    </motion.p>
+  </motion.div>
+)}
+    
+    {/* Quiz Action Button - Always show this regardless of progress data */}
+    <div className="text-center my-8">
+      {lesson.complete && (
+        <motion.button
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            if (!quizMode && !isTransitioningToQuiz) {
+              pagePositionRef.current = window.scrollY;
+              enterQuizMode(lesson.quizzes[0]);
+            }
+          }}
+          className={`inline-flex items-center px-6 py-3 border ${quizProgressData?.is_completed ? 'border-gray-300' : 'border-transparent'} rounded-lg shadow-sm text-base font-medium ${
+            quizProgressData?.is_completed
+              ? 'text-gray-700 bg-white hover:bg-gray-50'
+              : 'text-white bg-amber-600 hover:bg-amber-700'
+          } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all`}
+        >
+          {quizProgressData?.is_completed
+  ? "Review Quiz"
+  : quizHasAttempts
+    ? "Continue Quiz"
+    : "Start Quiz"}
+          <ArrowRight className="ml-2 -mr-1 h-5 w-5" />
+        </motion.button>
+      )}
       
-      {/* Footer */}
-      <div className="bg-gray-50 p-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center">
-        <div className="text-sm text-gray-600 mb-3 sm:mb-0">
-          Continue learning and track your progress!
+      {!lesson.complete && (
+        <motion.button
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => handleTabChange('content')}
+          className="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all"
+        >
+          Back to Lesson
+          <ArrowLeft className="ml-2 -mr-1 h-5 w-5" />
+        </motion.button>
+      )}
+    </div>
+    
+    {/* Add padding at the bottom to prevent content from being hidden behind fixed elements */}
+    <div className="pb-20"></div>
+  </motion.div>
+)}
+      
+      {/* Course Progress - Fixed to viewport bottom above the footer */}
+      {progressionEnabled && activeTab === 'content' && (
+  <div className="fixed bottom-16 left-0 right-0 px-4 py-3 bg-gray-50 border-t border-gray-200 shadow-md z-30">
+    <div className="flex items-center max-w-7xl mx-auto">
+      <Clock className="h-4 w-4 text-amber-600 mr-2" />
+      <div className="flex-1">
+        <div className="flex-1 bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-amber-600 rounded-full h-full transition-all duration-300"
+            style={{ width: `${readProgress}%` }}
+          ></div>
         </div>
+      </div>
+      <span className="ml-2 text-xs font-medium text-amber-800">{Math.round(readProgress)}% read</span>
+    </div>
+  </div>
+)}
+      
+      {/* Footer - Fixed at the viewport bottom */}
+      {activeTab === 'content' && (
+  <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-50 to-amber-50 p-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center z-20">
+    <div className="text-sm text-gray-600 mb-3 sm:mb-0">
+      {completionError && (
+        <div className="text-red-600 mb-2 flex items-center">
+          <AlertTriangle className="mr-1 h-4 w-4" />
+          {completionError}
+        </div>
+      )}
+      {!completionError && (
+        <div className="flex items-center">
+          <BookOpen className="mr-2 h-4 w-4 text-amber-500" />
+          {progressionEnabled 
+            ? "Complete lessons to unlock more content"
+            : "Continue learning and track your progress!"}
+        </div>
+      )}
+    </div>
         
         <div className="flex space-x-3">
           {prev && (
-            <button
-              onClick={() => onNavigate(prev, prev.section)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-            >
-              <svg className="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-              Previous Lesson
-            </button>
-          )}
-          
-          {next ? (
-            <button
-              onClick={() => onNavigate(next, next.section)}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-            >
-              Next Lesson
-              <svg className="ml-2 -mr-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              onClick={onBackToGrid}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Complete Course
-              <svg className="ml-2 -mr-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-              </svg>
-            </button>
-          )}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onNavigate(prev, prev.section)}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                >
+                  <ChevronLeft className="mr-2 -ml-1 h-5 w-5" />
+                  Previous Lesson
+                </motion.button>
+            )}
+            
+            {lesson.complete ? (
+    lesson.quizzes && lesson.quizzes.length > 0 && activeTab !== 'quiz' ? (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => handleTabChange('quiz')}
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
+        >
+          {lesson.quizzes[0].complete ? "Review Quiz" : "Take Quiz"}
+          <FileText className="ml-2 -mr-1 h-5 w-5" />
+        </motion.button>
+    ) : next ? (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => onNavigate(next, next.section)}
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+        >
+          Next Lesson
+          <ChevronRight className="ml-2 -mr-1 h-5 w-5" />
+        </motion.button>
+    ) : (
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onBackToGrid}
+        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
+      >
+        Course Complete
+        <Award className="ml-2 -mr-1 h-5 w-5" />
+      </motion.button>
+    )
+  ) : (
+    <motion.button
+      whileHover={isCompleting ? {} : { scale: 1.05 }}
+      whileTap={isCompleting ? {} : { scale: 0.95 }}
+      onClick={handleCompleteLesson}
+      disabled={isCompleting}
+      className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all ${
+        isCompleting 
+          ? "bg-gray-400 cursor-not-allowed" 
+          : "bg-green-600 hover:bg-green-700 focus:ring-green-500"
+      }`}
+    >
+      {isCompleting ? (
+        <>
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Processing...
+        </>
+      ) : (
+        <>
+          Mark as Complete
+          <CheckCircle className="ml-2 -mr-1 h-5 w-5" />
+        </>
+      )}
+    </motion.button>
+  )}
         </div>
+      </div>
+      )}
+    </motion.div>
+  );
+};
+
+// Confetti animation component
+const Confetti = () => {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50">
+      <div className="absolute inset-0 flex items-center justify-center">
+        {Array.from({ length: 100 }).map((_, index) => (
+          <motion.div
+            key={index}
+            className="w-2 h-2 bg-amber-500 rounded-full"
+            initial={{ 
+              x: 0, 
+              y: 0,
+              opacity: 1 
+            }}
+            animate={{ 
+              x: Math.random() * 800 - 400, 
+              y: Math.random() * 800 - 200,
+              opacity: 0,
+              scale: Math.random() * 2
+            }}
+            transition={{ 
+              duration: 2 + Math.random() * 3,
+              ease: "easeOut"
+            }}
+            style={{
+              position: 'absolute',
+              backgroundColor: ['#FFC107', '#FF9800', '#4CAF50', '#2196F3', '#9C27B0'][Math.floor(Math.random() * 5)]
+            }}
+          />
+        ))}
       </div>
     </div>
   );

@@ -18,12 +18,19 @@ const endpoints = {
   },
   
   // Progress tracking endpoints
-// Progress tracking endpoints
-progress: {
-  startLesson: '/progress/start-lesson',
-  completeLesson: '/progress/complete-lesson',
-  getCourseProgress: (courseId) => `/progress/course/${courseId}`,
-},
+  progress: {
+    startLesson: '/progress/start-lesson',
+    completeLesson: '/progress/complete-lesson',
+    getCourseProgress: (courseId) => `/progress/course/${courseId}`,
+  },
+  
+  // Quiz endpoints
+  quiz: {
+    startAttempt: '/quiz-attempts',
+    submitAnswer: '/quiz-answers',
+    getProgress: (quizId) => `/quizzes/${quizId}/progress`,
+  },
+  
   // Add more endpoint categories as needed
   events: {
     list: '/events',
