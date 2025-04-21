@@ -21,7 +21,7 @@ const endpoints = {
   products: {
     list: '/products',
     get: (id) => `/products/${id}`,
-    getBySlug: (slug) => `/products/slug/${slug}`,
+    getBySlug: (slug) => `/products/${slug}`,
   },
   
   // Cart endpoints
@@ -31,6 +31,13 @@ const endpoints = {
     update: (itemId) => `/cart/item/${itemId}`,
     remove: (itemId) => `/cart/item/${itemId}`,
     clear: '/cart',
+  },
+  
+  // Collection endpoints
+  collections: {
+    list: '/collections',
+    get: (id) => `/collections/${id}`,
+    acquire: (id) => `/collections/${id}/acquire`,
   },
   
   // Progress tracking endpoints

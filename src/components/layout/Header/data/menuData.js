@@ -16,16 +16,7 @@ export const menuItems = [
         { name: 'Our Mission', path: '/about/mission' }
       ] 
     },
-    { 
-      name: 'Ministries', 
-      path: '/ministries', 
-      hasDropdown: true,
-      submenu: [
-        { name: 'Church Services', path: '/ministries/church' },
-        { name: 'Community Outreach', path: '/ministries/outreach' },
-        { name: 'Prayer Groups', path: '/ministries/prayer' }
-      ] 
-    },
+    
     { 
       name: 'Courses', 
       path: '/courses', 
@@ -34,16 +25,12 @@ export const menuItems = [
     { 
       name: 'Membership', 
       path: '/membership', 
-      hasDropdown: true,
-      submenu: [
-        { name: 'Join Us', path: '/membership/join' },
-        { name: 'Member Benefits', path: '/membership/benefits' },
-        { name: 'Member Directory', path: '/membership/directory' }
-      ] 
+      hasDropdown: false,
+      
     },
     { 
-      name: 'Store', 
-      path: '/store', 
+      name: 'Shop', 
+      path: '/shop', 
       hasDropdown: false 
     },
   ];

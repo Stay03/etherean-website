@@ -27,10 +27,26 @@ const ProductCard = ({ product, onAddToCart }) => {
     return `$${parseFloat(price).toFixed(2)}`;
   };
 
+  const handleAddToCartClick = async () => {
+    setIsAddingToCart(true);
+    try {
+      const response = await onAddToCart({ product_id: id, quantity: 1 });
+      
+      // Check if this is a special "auth_required" response
+      // If so, reset the loading state immediately
+      if (response && response.auth_required) {
+        setIsAddingToCart(false);
+      }
+    } catch (error) {
+      // Reset loading state on error
+      setIsAddingToCart(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1">
       {/* Product Image */}
-      <Link to={`/shop/${slug}`}>
+      <Link to={`/product/${slug}`}>
         <div className="relative h-48 overflow-hidden">
           <img 
             src={thumbnail} 
@@ -58,7 +74,7 @@ const ProductCard = ({ product, onAddToCart }) => {
 
       {/* Product Info */}
       <div className="p-4">
-        <Link to={`/shop/${slug}`}>
+        <Link to={`/product/${slug}`}>
           <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-yellow-600 transition-colors">{title}</h3>
         </Link>
         
@@ -66,14 +82,7 @@ const ProductCard = ({ product, onAddToCart }) => {
           <span className="text-lg font-bold text-gray-900">{formatPrice(price)}</span>
           
           <button
-            onClick={async () => {
-              setIsAddingToCart(true);
-              try {
-                await onAddToCart({ product_id: id, quantity: 1 });
-              } finally {
-                setIsAddingToCart(false);
-              }
-            }}
+            onClick={handleAddToCartClick}
             disabled={isAddingToCart}
             className={`px-3 py-2 rounded-full text-sm font-medium transition-colors flex items-center justify-center min-w-[100px] ${
               isAddingToCart 

@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import ProductCard from './ProductCard';
 import { toast } from 'react-toastify';
 import apiClient from '../../services/api/client';
 import endpoints from '../../services/api/endpoints';
+import AuthModal from '../auth/AuthModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * ProductList Component
@@ -17,8 +19,24 @@ const ProductList = ({
   onPageChange,
   onRetry
 }) => {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingCartItem, setPendingCartItem] = useState(null);
+  const { isAuthenticated } = useAuth();
+  
   // Handle adding products to cart
   const handleAddToCart = async (cartItem) => {
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      // Store the pending cart item for later
+      setPendingCartItem(cartItem);
+      // Show auth modal
+      setIsAuthModalOpen(true);
+      // Return a resolved promise to stop the loading state in ProductCard
+      // without causing an uncaught error
+      return Promise.resolve({ auth_required: true });
+    }
+    
+    // User is authenticated, proceed with adding to cart
     try {
       const response = await apiClient.post(endpoints.cart.add, cartItem);
       toast.success(`Added ${cartItem.quantity} item(s) to cart`);
@@ -27,6 +45,26 @@ const ProductList = ({
       console.error('Failed to add item to cart:', error);
       toast.error(error.message || 'Failed to add item to cart');
       throw error; // Re-throw to allow the component to handle the error state
+    }
+  };
+
+  // Handle successful authentication
+  const handleAuthSuccess = async (user) => {
+    // Close the auth modal
+    setIsAuthModalOpen(false);
+    
+    // Process the pending cart item if it exists
+    if (pendingCartItem) {
+      try {
+        const response = await apiClient.post(endpoints.cart.add, pendingCartItem);
+        toast.success(`Added ${pendingCartItem.quantity} item(s) to cart`);
+      } catch (error) {
+        console.error('Failed to add item to cart:', error);
+        toast.error(error.message || 'Failed to add item to cart');
+      } finally {
+        // Clear the pending cart item
+        setPendingCartItem(null);
+      }
     }
   };
 
@@ -139,6 +177,17 @@ const ProductList = ({
 
       {/* Pagination */}
       {renderPagination()}
+      
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingCartItem(null);
+        }}
+        onAuthSuccess={handleAuthSuccess}
+        initialTab="login"
+      />
     </div>
   );
 };

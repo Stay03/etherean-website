@@ -14,6 +14,9 @@ const CourseDetailPage = lazy(() => import('./pages/CourseDetailPage'));
 const CourseLearnPage = lazy(() => import('./pages/CourseLearnPage'));
 const MyItemsPage = lazy(() => import('./pages/MyItemsPage'));
 const ShopPage = lazy(() => import('./pages/ShopPage'));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+// Add new MembershipPage import
+const MembershipPage = lazy(() => import('./pages/MembershipPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -55,6 +58,9 @@ const AppContent = () => {
                 <Route path="/course/:slug/learn" element={<CourseLearnPage />} />
                 <Route path="/my-items" element={<MyItemsPage />} />
                 <Route path="/shop" element={<ShopPage />} />
+                <Route path="/product/:slug" element={<ProductDetailPage />} />
+                {/* Add new route for membership page */}
+                <Route path="/membership" element={<MembershipPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

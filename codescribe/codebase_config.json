@@ -5,13 +5,13 @@
     "max_file_size_mb": 5,
     "include_paths": [
 
+        "src/components/auth/AuthModal.jsx",
+        "src/contexts/AuthContext.jsx",
         "src/services/api/client.js",
         "src/services/api/endpoints.js",
         "src/services/api/courseService.js",
         "src/hooks/useCourses.js",
         "src/pages/CoursesPage.jsx",
         "src/App.js"
-        
-
     ]
 }
