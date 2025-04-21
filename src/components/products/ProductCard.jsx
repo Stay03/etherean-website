@@ -33,12 +33,12 @@ const ProductCard = ({ product, onAddToCart }) => {
       const response = await onAddToCart({ product_id: id, quantity: 1 });
       
       // Check if this is a special "auth_required" response
-      // If so, reset the loading state immediately
-      if (response && response.auth_required) {
-        setIsAddingToCart(false);
-      }
+      // If so, we don't need to do anything special here
+      // The finally block will handle resetting the loading state
     } catch (error) {
-      // Reset loading state on error
+      console.error('Error adding to cart:', error);
+    } finally {
+      // Always reset loading state after the operation
       setIsAddingToCart(false);
     }
   };
