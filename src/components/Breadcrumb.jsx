@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 const Breadcrumb = ({ items, onNavigate }) => {
   return (
-    <div className="w-full bg-blue-50 pt-36 pb-20 mb-10 rounded-3xl">
+    <div className="w-full bg-blue-400 pt-36 pb-20 rounded-3xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">{items[items.length - 1].label}</h1>
         <nav className="flex justify-center" aria-label="Breadcrumb">

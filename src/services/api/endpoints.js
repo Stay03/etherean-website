@@ -17,6 +17,22 @@ const endpoints = {
     getBySlug: (slug) => `/courses/slug/${slug}`,
   },
   
+  // Product endpoints
+  products: {
+    list: '/products',
+    get: (id) => `/products/${id}`,
+    getBySlug: (slug) => `/products/slug/${slug}`,
+  },
+  
+  // Cart endpoints
+  cart: {
+    get: '/cart',
+    add: '/cart/add',
+    update: (itemId) => `/cart/item/${itemId}`,
+    remove: (itemId) => `/cart/item/${itemId}`,
+    clear: '/cart',
+  },
+  
   // Progress tracking endpoints
   progress: {
     startLesson: '/progress/start-lesson',
