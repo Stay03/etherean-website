@@ -29,18 +29,25 @@ const QuizAnswersList = ({ progressData }) => {
 
   const { answers } = progressData.attempt;
   
+  // For debugging data structure (remove in production)
+  console.log("Answers data:", answers);
+  
   // Search and filter functionality
   const filteredAnswers = answers.filter(answer => {
+    // Safe access to question text - ensure it exists
+    const questionText = answer.quiz_question?.question_text || '';
+    const answerText = answer.answer_text || '';
+    const optionText = answer.selected_option?.option_text || '';
+    
     const matchesSearch = searchText === '' || 
-      answer.quiz_question.question_text.toLowerCase().includes(searchText.toLowerCase()) ||
-      (answer.answer_text && answer.answer_text.toLowerCase().includes(searchText.toLowerCase())) ||
-      (answer.selected_option?.option_text && 
-       answer.selected_option.option_text.toLowerCase().includes(searchText.toLowerCase()));
+      questionText.toLowerCase().includes(searchText.toLowerCase()) ||
+      answerText.toLowerCase().includes(searchText.toLowerCase()) ||
+      optionText.toLowerCase().includes(searchText.toLowerCase());
     
     const matchesFilter = filterType === 'all' ||
       (filterType === 'correct' && answer.is_correct === true) ||
       (filterType === 'incorrect' && answer.is_correct === false) ||
-      (filterType === 'pending' && answer.quiz_question.question_type === 'essay' && !answer.graded_at);
+      (filterType === 'pending' && answer.quiz_question?.question_type === 'essay' && !answer.graded_at);
     
     return matchesSearch && matchesFilter;
   });
@@ -106,7 +113,7 @@ const QuizAnswersList = ({ progressData }) => {
         ) : (
           filteredAnswers.map((answer, index) => (
             <AnswerItem 
-              key={answer.id} 
+              key={answer.id || index} 
               answer={answer} 
               index={index} 
               isExpanded={expandedAnswer === answer.id}
@@ -123,10 +130,20 @@ const QuizAnswersList = ({ progressData }) => {
  * Component to display a single answer item
  */
 const AnswerItem = ({ answer, index, isExpanded, onToggleExpand }) => {
-  const isMultipleChoice = answer.quiz_question.question_type === 'multiple_choice' || 
-                           answer.quiz_question.question_type === 'true_false';
-  const isEssay = answer.quiz_question.question_type === 'essay';
+  // Log the full answer object for debugging (remove in production)
+  console.log(`Answer item ${index}:`, answer);
+  
+  // Safely handle potential undefined or missing values
+  const questionType = answer.quiz_question?.question_type || '';
+  const isMultipleChoice = questionType === 'multiple_choice' || questionType === 'true_false';
+  const isEssay = questionType === 'essay';
   const isEssayPendingGrading = isEssay && answer.graded_at === null;
+  
+  // Extract options array from the quiz_question
+  const options = answer.quiz_question?.options || [];
+  
+  // Log options for debugging (remove in production)
+  console.log(`Options for answer ${index}:`, options);
   
   // Determine status icon and colors
   let StatusIcon = HelpCircle;
@@ -182,16 +199,16 @@ const AnswerItem = ({ answer, index, isExpanded, onToggleExpand }) => {
           <div className="flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <h4 className="text-sm font-medium text-gray-900 pr-8 sm:pr-0">
-                {answer.quiz_question.question_text}
+                {answer.quiz_question?.question_text || 'Question text not available'}
               </h4>
               
               <div className="flex items-center mt-1 sm:mt-0">
                 <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800 mr-2">
-                  {answer.quiz_question.question_type === 'multiple_choice' 
+                  {isMultipleChoice 
                     ? 'Multiple Choice' 
-                    : answer.quiz_question.question_type === 'true_false' 
-                      ? 'True/False' 
-                      : 'Essay'}
+                    : isEssay 
+                      ? 'Essay' 
+                      : 'Unknown Type'}
                 </span>
                 
                 {/* Status badge */}
@@ -257,33 +274,37 @@ const AnswerItem = ({ answer, index, isExpanded, onToggleExpand }) => {
                   <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
                     <h5 className="text-xs font-medium text-gray-700 mb-2">Available Options:</h5>
                     <ul className="space-y-2">
-                      {answer.quiz_question.options.map(option => (
-                        <li key={option.id} className="flex items-start">
-                          <div className={`mr-2 mt-0.5 ${
-                            option.is_correct 
-                              ? 'text-green-500' 
-                              : answer.selected_option?.id === option.id 
-                                ? 'text-red-500'
-                                : 'text-gray-400'
-                          }`}>
-                            {option.is_correct 
-                              ? <CheckCircle className="h-4 w-4" /> 
-                              : answer.selected_option?.id === option.id
-                                ? <XCircle className="h-4 w-4" />
-                                : <div className="h-4 w-4 border border-gray-300 rounded-full"></div>}
-                          </div>
-                          <span className={`text-sm ${
-                            option.is_correct 
-                              ? 'text-green-800 font-medium' 
-                              : answer.selected_option?.id === option.id
-                                ? 'text-red-800 font-medium'
-                                : 'text-gray-600'
-                          }`}>
-                            {option.option_text}
-                            {option.is_correct && ' (Correct)'}
-                          </span>
-                        </li>
-                      ))}
+                      {options && options.length > 0 ? (
+                        options.map(option => (
+                          <li key={option.id || Math.random()} className="flex items-start">
+                            <div className={`mr-2 mt-0.5 ${
+                              option.is_correct 
+                                ? 'text-green-500' 
+                                : answer.selected_option?.id === option.id 
+                                  ? 'text-red-500'
+                                  : 'text-gray-400'
+                            }`}>
+                              {option.is_correct 
+                                ? <CheckCircle className="h-4 w-4" /> 
+                                : answer.selected_option?.id === option.id
+                                  ? <XCircle className="h-4 w-4" />
+                                  : <div className="h-4 w-4 border border-gray-300 rounded-full"></div>}
+                            </div>
+                            <span className={`text-sm ${
+                              option.is_correct 
+                                ? 'text-green-800 font-medium' 
+                                : answer.selected_option?.id === option.id
+                                  ? 'text-red-800 font-medium'
+                                  : 'text-gray-600'
+                            }`}>
+                              {option.option_text || 'Option text not available'}
+                              {option.is_correct && ' (Correct)'}
+                            </span>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-500">No options available</li>
+                      )}
                     </ul>
                   </div>
                 </div>

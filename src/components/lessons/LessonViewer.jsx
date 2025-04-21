@@ -20,6 +20,7 @@ import QuizAnswersList from '../quiz/QuizAnswersList';
  * - Fixed video position with naturally flowing content
  * - Uses main app scrolling without nested scrollable areas
  * - Fixed footer and progress bar at bottom of viewport
+ * - Loading indicator for lesson navigation
  */
 const LessonViewer = ({
   lesson,
@@ -41,6 +42,8 @@ const LessonViewer = ({
   const [showConfetti, setShowConfetti] = useState(false);
   const pagePositionRef = useRef(0);
   const contentRef = useRef(null);
+  const [isNavigating, setIsNavigating] = useState(false); // Track lesson navigation state
+  const previousLessonIdRef = useRef(lesson?.id); // Store previous lesson id for comparison
   
   // Fetch quiz progress data if we're in quiz tab
   const {
@@ -55,16 +58,35 @@ const LessonViewer = ({
       : null
   );
   
-  // Reset to content tab when lesson changes
+  // Reset to content tab when lesson changes and handle navigation state
   useEffect(() => {
-    setActiveTab('content');
-    setQuizMode(false);
-    setCurrentQuiz(null);
-    setIsTransitioningToQuiz(false);
-    
-    // Track that user started the lesson
-    if (lesson?.id) {
+    // If lesson ID changed, we're navigating between lessons
+    if (lesson?.id && previousLessonIdRef.current !== lesson.id) {
+      setIsNavigating(true); // Set navigation loading state
+      
+      // Simulating content loading time
+      const navigationTimer = setTimeout(() => {
+        setIsNavigating(false); // Turn off loading state after content loads
+        window.scrollTo(0, 0); // Scroll to top for new lesson
+      }, 700); // Adjust timing based on your needs
+      
+      // Update previous lesson id
+      previousLessonIdRef.current = lesson.id;
+      
+      // Reset states
+      setActiveTab('content');
+      setQuizMode(false);
+      setCurrentQuiz(null);
+      setIsTransitioningToQuiz(false);
+      
+      // Track that user started the lesson
       trackLessonStart(lesson.id);
+      
+      return () => clearTimeout(navigationTimer);
+    } else if (lesson?.id) {
+      // For initial load
+      trackLessonStart(lesson.id);
+      previousLessonIdRef.current = lesson.id;
     }
   }, [lesson?.id]);
 
@@ -165,6 +187,14 @@ const LessonViewer = ({
       window.scrollTo(0, pagePositionRef.current);
     }, 10);
   };
+
+  // Custom navigation handler to show loading state
+  const handleNavigate = (targetLesson, targetSection) => {
+    setIsNavigating(true);
+    
+    // Call the parent navigation handler
+    onNavigate(targetLesson, targetSection);
+  };
   
   if (!lesson || !section || !course) {
     return (
@@ -251,7 +281,7 @@ const LessonViewer = ({
       } else {
         if (next) {
           setTimeout(() => {
-            onNavigate(next, next.section);
+            handleNavigate(next, next.section);
           }, 1500);
         }
       }
@@ -265,14 +295,31 @@ const LessonViewer = ({
 
   // Handle quiz completion
   const handleQuizComplete = (results) => {
+    // Show confetti animation
     setShowConfetti(true);
+    
+    // We no longer need to navigate away immediately since
+    // the QuizManager now shows the results view automatically
+    
     setTimeout(() => {
       setShowConfetti(false);
+      
+      // After confetti animation, if there's a next lesson we can offer to navigate to it
       if (next) {
-        onNavigate(next, next.section);
-      } else {
-        setQuizMode(false);
+        // Instead of automatically navigating, we could show a prompt or button
+        // Or we can keep the automatic navigation with a longer delay
+        // since the user now has time to view the results first
+        
+        // Option 1: Longer delay before auto-navigation
+        setTimeout(() => {
+          handleNavigate(next, next.section);
+        }, 5000);  // Give user 5 seconds to see results before navigating
+        
+        // Option 2: Or remove auto-navigation and let user choose when to continue
+        // The QuizManager's results view already has a "Return to Lesson" button
       }
+      // Removed the else block that would set quizMode to false
+      // since we're now showing results view inside QuizManager
     }, 2000);
   };
   
@@ -374,7 +421,7 @@ const LessonViewer = ({
                     className="mr-3 text-gray-500 hover:text-amber-600 transition-colors"
                     aria-label="Back to lesson"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    {/* <ChevronLeft className="w-5 h-5" /> */}
                   </motion.button>
                 <h1 className="text-xl font-bold text-gray-900 truncate" title={currentQuiz.title}>
                   {currentQuiz.title}
@@ -395,6 +442,16 @@ const LessonViewer = ({
       </motion.div>
     );
   }
+
+  // Loading overlay for lesson navigation
+  const NavigationLoadingOverlay = () => (
+    <div className="fixed inset-0 bg-white bg-opacity-70 z-50 flex items-center justify-center">
+      <div className="bg-white p-8 rounded-xl shadow-lg flex flex-col items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600 mb-4"></div>
+        <p className="text-lg font-medium text-amber-800">Loading lesson content...</p>
+      </div>
+    </div>
+  );
   
   return (
     <motion.div 
@@ -402,6 +459,9 @@ const LessonViewer = ({
       animate={{ opacity: 1 }}
       className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-md relative"
     >
+      {/* Navigation Loading Overlay */}
+      {isNavigating && <NavigationLoadingOverlay />}
+      
       {showConfetti && <Confetti />}
       
       {/* Lesson Header */}
@@ -446,11 +506,12 @@ const LessonViewer = ({
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => onNavigate(prev, prev.section)}
+                  onClick={() => handleNavigate(prev, prev.section)}
                   className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                  disabled={isNavigating}
                 >
                   <ChevronLeft className="mr-1.5 -ml-1 h-5 w-5" />
-                  Previous
+                  Previous Lesson
                 </motion.button>
             )}
             
@@ -458,8 +519,9 @@ const LessonViewer = ({
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => onNavigate(next, next.section)}
+                  onClick={() => handleNavigate(next, next.section)}
                   className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                  disabled={isNavigating}
                 >
                   Next
                   <ChevronRight className="ml-1.5 -mr-1 h-5 w-5" />
@@ -481,6 +543,7 @@ const LessonViewer = ({
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
               `}
               onClick={() => handleTabChange('content')}
+              disabled={isNavigating}
             >
               <BookOpen className="mr-2 h-4 w-4" />
               Lesson Content
@@ -494,6 +557,7 @@ const LessonViewer = ({
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
               `}
               onClick={() => handleTabChange('quiz')}
+              disabled={isNavigating}
             >
               <FileText className="mr-2 h-4 w-4" />
               Quiz
@@ -571,6 +635,7 @@ const LessonViewer = ({
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setExpanded(!expanded)}
                     className="mt-2 text-amber-600 hover:text-amber-700 text-sm font-medium flex items-center transition-colors"
+                    disabled={isNavigating}
                   >
                     {expanded ? 'Show less' : 'Show more'}
                     {expanded ? 
@@ -619,8 +684,7 @@ const LessonViewer = ({
                     }
                   </div>
                   <div className="ml-3">
-                    <h3 className={`text-sm font-medium ${lesson.complete ? 'text-green-800' : 'text-amber-800'}`}>
-                      {lesson.complete ? 'Lesson Completed' : 'Mark as Complete to Progress'}
+                    <h3 className={`text-sm font-medium ${lesson.complete ? 'text-green-800' : 'text-amber-800'}`}>{lesson.complete ? 'Lesson Completed' : 'Mark as Complete to Progress'}
                     </h3>
                     <div className={`mt-2 text-sm ${lesson.complete ? 'text-green-700' : 'text-amber-700'}`}>
                       {lesson.complete ? (
@@ -640,6 +704,7 @@ const LessonViewer = ({
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleTabChange('quiz')}
                         className="mt-3 inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
+                        disabled={isNavigating}
                       >
                         Take Quiz Now
                         <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -657,258 +722,254 @@ const LessonViewer = ({
       )}
       
       {/* Quiz Tab Content */}
-      {/* Quiz Tab Content */}
-{activeTab === 'quiz' && !quizMode && (
-  <motion.div 
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="px-6 py-6"
-  >
-    {/* Show loading indicator while fetching data */}
-    {isLoadingQuizProgress && (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
-      </div>
-    )}
-    
-    {/* Show quiz progress summary when data is available */}
-    {!isLoadingQuizProgress && quizProgressData && (
-      <>
-        <QuizProgressSummary 
-          progressData={quizProgressData}
-          isLoading={false}
-          error={quizProgressError}
-        />
+      {activeTab === 'quiz' && !quizMode && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="px-6 py-6"
+        >
+          {/* Show loading indicator while fetching data */}
+          {isLoadingQuizProgress && (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
+            </div>
+          )}
+          
+          {/* Show quiz progress summary when data is available */}
+          {!isLoadingQuizProgress && quizProgressData && (
+            <>
+              <QuizProgressSummary 
+                progressData={quizProgressData}
+                isLoading={false}
+                error={quizProgressError}
+              />
+              
+              {/* Only show answers list when we have attempt data */}
+              {quizProgressData && quizProgressData.attempt && (
+                <QuizAnswersList progressData={quizProgressData} />
+              )}
+            </>
+          )}
+          
+          {/* Quiz Actions - Only show this section if we don't have quizProgressData yet or if lesson is not complete */}
+          {(!quizProgressData || !lesson.complete) && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-6 flex-1"
+        >
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mb-6"
+          >
+            <div className="mx-auto h-20 w-20 rounded-full bg-amber-100 flex items-center justify-center">
+              {!lesson.complete ? (
+                <AlertTriangle className="h-10 w-10 text-amber-500" />
+              ) : quizProgressData?.is_completed ? (
+                <Award className="h-10 w-10 text-green-500" />
+              ) : quizHasAttempts ? (
+                <Clock className="h-10 w-10 text-blue-500" />
+              ) : (
+                <Award className="h-10 w-10 text-amber-500" />
+              )}
+            </div>
+          </motion.div>
+          
+          <motion.h3 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-xl font-semibold text-gray-900 mb-2"
+          >
+            {!lesson.complete 
+              ? "Complete the lesson first"
+              : quizProgressData?.is_completed
+                ? "Quiz Completed"
+                : quizHasAttempts
+                  ? "Continue Your Quiz"
+                  : "Ready to Test Your Knowledge?"}
+          </motion.h3>
+          
+          <motion.p 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-gray-600 mb-6 max-w-md mx-auto"
+          >
+            {!lesson.complete 
+              ? "You need to complete this lesson before taking the quiz."
+              : quizProgressData?.is_completed
+                ? "You've completed this quiz. Review your answers and results below."
+                : quizHasAttempts
+                  ? "You've already started this quiz. You can continue where you left off!"
+                  : "Take this quiz to check your understanding of the lesson material."}
+          </motion.p>
+        </motion.div>
+      )}
+          
+          {/* Quiz Action Button - Only show when quiz is not completed */}
+      <div className="text-center my-8">
+        {lesson.complete && !quizProgressData?.is_completed && (
+          <motion.button
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (!quizMode && !isTransitioningToQuiz) {
+                pagePositionRef.current = window.scrollY;
+                enterQuizMode(lesson.quizzes[0]);
+              }
+            }}
+            className="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+            disabled={isNavigating}
+          >
+            {quizHasAttempts ? "Continue Quiz" : "Start Quiz"}
+            <ArrowRight className="ml-2 -mr-1 h-5 w-5" />
+          </motion.button>
+        )}
         
-        {/* Only show answers list when we have attempt data */}
-        {quizProgressData && quizProgressData.attempt && (
-          <QuizAnswersList progressData={quizProgressData} />
-        )}
-      </>
-    )}
-    
-    {/* Quiz Actions - Only show this section if we don't have quizProgressData yet or if lesson is not complete */}
-    {(!quizProgressData || !lesson.complete) && (
-  <motion.div 
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="text-center py-6 flex-1"
-  >
-    <motion.div 
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: 0.2 }}
-      className="mb-6"
-    >
-      <div className="mx-auto h-20 w-20 rounded-full bg-amber-100 flex items-center justify-center">
-        {!lesson.complete ? (
-          <AlertTriangle className="h-10 w-10 text-amber-500" />
-        ) : quizProgressData?.is_completed ? (
-          <Award className="h-10 w-10 text-green-500" />
-        ) : quizHasAttempts ? (
-          <Clock className="h-10 w-10 text-blue-500" />
-        ) : (
-          <Award className="h-10 w-10 text-amber-500" />
+        {!lesson.complete && (
+          <motion.button
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleTabChange('content')}
+            className="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all"
+            disabled={isNavigating}
+          >
+            Back to Lesson
+            <ArrowLeft className="ml-2 -mr-1 h-5 w-5" />
+          </motion.button>
         )}
       </div>
-    </motion.div>
-    
-    <motion.h3 
-      initial={{ y: 20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ delay: 0.3 }}
-      className="text-xl font-semibold text-gray-900 mb-2"
-    >
-      {!lesson.complete 
-        ? "Complete the lesson first"
-        : quizProgressData?.is_completed
-          ? "Quiz Completed"
-          : quizHasAttempts
-            ? "Continue Your Quiz"
-            : "Ready to Test Your Knowledge?"}
-    </motion.h3>
-    
-    <motion.p 
-      initial={{ y: 20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ delay: 0.4 }}
-      className="text-gray-600 mb-6 max-w-md mx-auto"
-    >
-      {!lesson.complete 
-        ? "You need to complete this lesson before taking the quiz."
-        : quizProgressData?.is_completed
-          ? "You've completed this quiz. Review your answers and results below."
-          : quizHasAttempts
-            ? "You've already started this quiz. You can continue where you left off!"
-            : "Take this quiz to check your understanding of the lesson material."}
-    </motion.p>
-  </motion.div>
-)}
-    
-    {/* Quiz Action Button - Always show this regardless of progress data */}
-    <div className="text-center my-8">
-      {lesson.complete && (
-        <motion.button
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            if (!quizMode && !isTransitioningToQuiz) {
-              pagePositionRef.current = window.scrollY;
-              enterQuizMode(lesson.quizzes[0]);
-            }
-          }}
-          className={`inline-flex items-center px-6 py-3 border ${quizProgressData?.is_completed ? 'border-gray-300' : 'border-transparent'} rounded-lg shadow-sm text-base font-medium ${
-            quizProgressData?.is_completed
-              ? 'text-gray-700 bg-white hover:bg-gray-50'
-              : 'text-white bg-amber-600 hover:bg-amber-700'
-          } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all`}
-        >
-          {quizProgressData?.is_completed
-  ? "Review Quiz"
-  : quizHasAttempts
-    ? "Continue Quiz"
-    : "Start Quiz"}
-          <ArrowRight className="ml-2 -mr-1 h-5 w-5" />
-        </motion.button>
+          {/* Add padding at the bottom to prevent content from being hidden behind fixed elements */}
+          <div className="pb-20"></div>
+        </motion.div>
       )}
-      
-      {!lesson.complete && (
-        <motion.button
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => handleTabChange('content')}
-          className="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all"
-        >
-          Back to Lesson
-          <ArrowLeft className="ml-2 -mr-1 h-5 w-5" />
-        </motion.button>
-      )}
-    </div>
-    
-    {/* Add padding at the bottom to prevent content from being hidden behind fixed elements */}
-    <div className="pb-20"></div>
-  </motion.div>
-)}
-      
+            
       {/* Course Progress - Fixed to viewport bottom above the footer */}
       {progressionEnabled && activeTab === 'content' && (
-  <div className="fixed bottom-16 left-0 right-0 px-4 py-3 bg-gray-50 border-t border-gray-200 shadow-md z-30">
-    <div className="flex items-center max-w-7xl mx-auto">
-      <Clock className="h-4 w-4 text-amber-600 mr-2" />
-      <div className="flex-1">
-        <div className="flex-1 bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-amber-600 rounded-full h-full transition-all duration-300"
-            style={{ width: `${readProgress}%` }}
-          ></div>
+        <div className="fixed bottom-16 left-0 right-0 px-4 py-3 bg-gray-50 border-t border-gray-200 shadow-md z-30">
+          <div className="flex items-center max-w-7xl mx-auto">
+            <Clock className="h-4 w-4 text-amber-600 mr-2" />
+            <div className="flex-1">
+              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-amber-600 rounded-full h-full transition-all duration-300"
+                  style={{ width: `${readProgress}%` }}
+                ></div>
+              </div>
+            </div>
+            <span className="ml-2 text-xs font-medium text-amber-800">{Math.round(readProgress)}% read</span>
+          </div>
         </div>
-      </div>
-      <span className="ml-2 text-xs font-medium text-amber-800">{Math.round(readProgress)}% read</span>
-    </div>
-  </div>
-)}
-      
+      )}
+            
       {/* Footer - Fixed at the viewport bottom */}
       {activeTab === 'content' && (
-  <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-50 to-amber-50 p-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center z-20">
-    <div className="text-sm text-gray-600 mb-3 sm:mb-0">
-      {completionError && (
-        <div className="text-red-600 mb-2 flex items-center">
-          <AlertTriangle className="mr-1 h-4 w-4" />
-          {completionError}
-        </div>
-      )}
-      {!completionError && (
-        <div className="flex items-center">
-          <BookOpen className="mr-2 h-4 w-4 text-amber-500" />
-          {progressionEnabled 
-            ? "Complete lessons to unlock more content"
-            : "Continue learning and track your progress!"}
-        </div>
-      )}
-    </div>
-        
-        <div className="flex space-x-3">
-          {prev && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => onNavigate(prev, prev.section)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
-                >
-                  <ChevronLeft className="mr-2 -ml-1 h-5 w-5" />
-                  Previous Lesson
-                </motion.button>
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-50 to-amber-50 p-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center z-20">
+          <div className="text-sm text-gray-600 mb-3 sm:mb-0">
+            {completionError && (
+              <div className="text-red-600 mb-2 flex items-center">
+                <AlertTriangle className="mr-1 h-4 w-4" />
+                {completionError}
+              </div>
+            )}
+            {!completionError && (
+              <div className="flex items-center">
+                <BookOpen className="mr-2 h-4 w-4 text-amber-500" />
+                {progressionEnabled 
+                  ? "Complete lessons to unlock more content"
+                  : "Continue learning and track your progress!"}
+              </div>
+            )}
+          </div>
+              
+          <div className="flex space-x-3">
+            {prev && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleNavigate(prev, prev.section)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                disabled={isNavigating}
+              >
+                <ChevronLeft className="mr-2 -ml-1 h-5 w-5" />
+                Previous Lesson
+              </motion.button>
             )}
             
             {lesson.complete ? (
-    lesson.quizzes && lesson.quizzes.length > 0 && activeTab !== 'quiz' ? (
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => handleTabChange('quiz')}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
-        >
-          {lesson.quizzes[0].complete ? "Review Quiz" : "Take Quiz"}
-          <FileText className="ml-2 -mr-1 h-5 w-5" />
-        </motion.button>
-    ) : next ? (
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => onNavigate(next, next.section)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
-        >
-          Next Lesson
-          <ChevronRight className="ml-2 -mr-1 h-5 w-5" />
-        </motion.button>
-    ) : (
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={onBackToGrid}
-        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
-      >
-        Course Complete
-        <Award className="ml-2 -mr-1 h-5 w-5" />
-      </motion.button>
-    )
-  ) : (
-    <motion.button
-      whileHover={isCompleting ? {} : { scale: 1.05 }}
-      whileTap={isCompleting ? {} : { scale: 0.95 }}
-      onClick={handleCompleteLesson}
-      disabled={isCompleting}
-      className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all ${
-        isCompleting 
-          ? "bg-gray-400 cursor-not-allowed" 
-          : "bg-green-600 hover:bg-green-700 focus:ring-green-500"
-      }`}
-    >
-      {isCompleting ? (
-        <>
-          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Processing...
-        </>
-      ) : (
-        <>
-          Mark as Complete
-          <CheckCircle className="ml-2 -mr-1 h-5 w-5" />
-        </>
-      )}
-    </motion.button>
-  )}
+              lesson.quizzes && lesson.quizzes.length > 0 && activeTab !== 'quiz' && !lesson.quizzes[0].complete ? (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleTabChange('quiz')}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
+                  disabled={isNavigating}
+                >
+                  Take Quiz
+                  <FileText className="ml-2 -mr-1 h-5 w-5" />
+                </motion.button>
+              ) : next ? (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleNavigate(next, next.section)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                  disabled={isNavigating}
+                >
+                  Next Lesson
+                  <ChevronRight className="ml-2 -mr-1 h-5 w-5" />
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={onBackToGrid}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
+                  disabled={isNavigating}
+                >
+                  Course Complete
+                  <Award className="ml-2 -mr-1 h-5 w-5" />
+                </motion.button>
+              )
+            ) : (
+              <motion.button
+                whileHover={isCompleting || isNavigating ? {} : { scale: 1.05 }}
+                whileTap={isCompleting || isNavigating ? {} : { scale: 0.95 }}
+                onClick={handleCompleteLesson}
+                disabled={isCompleting || isNavigating}
+                className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all ${
+                  isCompleting || isNavigating
+                    ? "bg-gray-400 cursor-not-allowed" 
+                    : "bg-green-600 hover:bg-green-700 focus:ring-green-500"
+                }`}
+              >
+                {isCompleting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Mark as Complete
+                    <CheckCircle className="ml-2 -mr-1 h-5 w-5" />
+                  </>
+                )}
+              </motion.button>
+            )}
+          </div>
         </div>
-      </div>
       )}
     </motion.div>
   );

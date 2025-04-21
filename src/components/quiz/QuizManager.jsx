@@ -3,10 +3,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, FileText, CheckCircle, ArrowLeft, 
   Award, Info, Flag, Clock, HelpCircle, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { QuizProvider } from '../../contexts/QuizContext';
 import QuizHeader from './QuizHeader';
 import ProgressBar from './navigation/ProgressBar';
-import NavigationControls from './navigation/NavigationControls';
 import QuestionNavigator from './navigation/QuestionNavigator';
 import QuizProgressSummary from './results/QuizProgressSummary';
 import QuizAnswersList from './results/QuizAnswersList';
@@ -17,21 +17,24 @@ import CompletionBanner from './feedback/CompletionBanner';
 import LoadingState from './shared/LoadingState';
 import ErrorState from './shared/ErrorState';
 import FlaggedQuestionsPanel from './navigation/FlaggedQuestionsPanel';
+import FixedNavigationBar from './navigation/FixedNavigationBar';
 import quizService from '../../services/api/quizService';
 import quizProgressService from '../../services/api/quizProgressService';
 
 /**
  * QuizManager - Main container component for the quiz experience
+ * Now with fixed navigation bar at the bottom
  * 
  * @param {Object} props
  * @param {Object} props.quiz - Quiz data object
  * @param {Function} props.onComplete - Callback when quiz is completed
  * @param {Function} props.onReturn - Callback to return to previous screen
+ * @param {string} props.courseSlug - The slug of the current course
  */
-const QuizManager = ({ quiz, onComplete = () => {}, onReturn = () => {} }) => {
+const QuizManager = ({ quiz, onComplete = () => {}, onReturn = () => {}, courseSlug }) => {
   return (
     <QuizProvider quiz={quiz} onComplete={onComplete}>
-      <QuizManagerContent quiz={quiz} onComplete={onComplete} onReturn={onReturn} />
+      <QuizManagerContent quiz={quiz} onComplete={onComplete} onReturn={onReturn} courseSlug={courseSlug} />
     </QuizProvider>
   );
 };
@@ -39,9 +42,13 @@ const QuizManager = ({ quiz, onComplete = () => {}, onReturn = () => {} }) => {
 /**
  * QuizManagerContent - Inner component that uses the quiz context
  */
-const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
+const QuizManagerContent = ({ quiz, onComplete, onReturn, courseSlug }) => {
+  // Use navigate for routing
+  const navigate = useNavigate();
+  
   // Local UI state
   const [activeTab, setActiveTab] = useState('quiz');
+  // Show results state to control when to show results view
   const [showResults, setShowResults] = useState(false);
   const [showFlaggedPanel, setShowFlaggedPanel] = useState(false);
   const [completionNotice, setCompletionNotice] = useState(false);
@@ -63,6 +70,7 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
     progressError: null,
     flaggedQuestions: [],
     elapsedTime: 0,
+    finalElapsedTime: null,
     progress: {
       current: 1,
       total: quiz?.questions?.length || 0,
@@ -71,6 +79,31 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
       isFullyAnswered: false
     }
   });
+  
+  // Handle returning to the learn page
+  const handleBackToLearn = useCallback(() => {
+    // Get the current URL path
+    const currentPath = window.location.pathname;
+    
+    // Extract the course slug from the current URL
+    const match = currentPath.match(/\/course\/([^\/]+)/);
+    const extractedSlug = match ? match[1] : null;
+    
+    if (extractedSlug) {
+      // First, try to remove any existing lesson parameters from the URL
+      const cleanUrl = `/course/${extractedSlug}/learn`;
+      
+      // Use window.history.pushState to directly modify the URL without triggering router events
+      window.history.pushState({}, '', cleanUrl);
+      
+      // Then force a page reload to ensure we get a fresh state
+      window.location.reload();
+    } else {
+      // If we can't determine the slug, fall back to default behavior
+      console.error('Could not determine course slug from URL, using fallback');
+      onReturn();
+    }
+  }, [onReturn]);
   
   // Destructure state for easier access
   const {
@@ -89,24 +122,26 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
     progressError,
     flaggedQuestions,
     elapsedTime,
+    finalElapsedTime,
     progress
   } = quizState;
   
   // Timer effect for tracking elapsed time
   useEffect(() => {
-    const startTime = new Date();
+    if (isComplete || showResults) {
+      // Don't start or continue the timer if quiz is complete or showing results
+      return;
+    }
     
     const timerInterval = setInterval(() => {
-      const now = new Date();
-      const elapsed = Math.floor((now - startTime) / 1000); // in seconds
       setQuizState(prev => ({
         ...prev,
-        elapsedTime: elapsed
+        elapsedTime: prev.elapsedTime + 1 // Increment by 1 second
       }));
     }, 1000);
     
     return () => clearInterval(timerInterval);
-  }, []);
+  }, [isComplete, showResults]);
   
   // Initialize quiz on first render
   useEffect(() => {
@@ -212,34 +247,37 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
   const fetchQuizProgress = async () => {
     if (!quiz?.id) return;
     
-    setQuizState(prev => ({
-      ...prev,
-      isLoadingProgress: true,
-      progressError: null
-    }));
-    
     try {
       const response = await quizProgressService.getQuizProgress(quiz.id);
       
+      // Create a brand new object to ensure React detects the state change
+      const freshData = JSON.parse(JSON.stringify(response.data));
+      
       setQuizState(prev => ({
         ...prev,
-        progressData: response.data,
+        progressData: freshData,
         isLoadingProgress: false
       }));
       
-      // If quiz is already completed, show results
-      if (response.data?.is_completed) {
-        setShowResults(true);
+      // If quiz is completed, show results view
+      if (freshData?.is_completed) {
+        // Set completion state and freeze the timer
         setQuizState(prev => ({
           ...prev,
           isComplete: true,
-          results: response.data
+          results: freshData,
+          // Store the final elapsed time
+          finalElapsedTime: prev.elapsedTime
         }));
         
-        onComplete(response.data);
+        // Show results view
+        setShowResults(true);
+        
+        // Call the onComplete callback for any parent component handling
+        onComplete(freshData);
       }
       
-      return response.data;
+      return freshData;
     } catch (err) {
       setQuizState(prev => ({
         ...prev,
@@ -421,31 +459,42 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
     }
   }, [quiz?.questions, answers, goToQuestion]);
   
-  // Handle showing results when quiz is completed
+  // Add useEffect that watches for showResults changes
   useEffect(() => {
-    if (progressData?.is_completed) {
-      setShowResults(true);
-    }
-    
-    if (isComplete && results) {
-      setShowResults(true);
+    if (showResults && progressData === null) {
+      // If we're showing results but don't have progress data yet, fetch it
       fetchQuizProgress();
     }
-  }, [isComplete, results, progressData]);
+  }, [showResults]);
   
   // Check if quiz is complete
   useEffect(() => {
-    if (progress.isFullyAnswered && !showResults && !completionNotice) {
+    if (progress.isFullyAnswered && !completionNotice) {
       setCompletionNotice(true);
       
       // Auto-refresh quiz progress after a delay
       const timer = setTimeout(() => {
-        fetchQuizProgress();
+        fetchQuizProgress().then(() => {
+          // Force a re-render after fetching progress
+          setQuizState(prev => ({...prev}));
+        });
       }, 1500);
       
       return () => clearTimeout(timer);
     }
-  }, [progress.isFullyAnswered, showResults, completionNotice]);
+  }, [progress.isFullyAnswered, completionNotice]);
+  
+  // Add useEffect that refreshes when progress data indicates completion
+  useEffect(() => {
+    if (progressData?.is_completed && !showResults) {
+      // Small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        setShowResults(true);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [progressData?.is_completed]);
   
   // Get current question's answer
   const currentQuestionAnswer = currentQuestion ? answers[currentQuestion.id] : null;
@@ -473,83 +522,41 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
     }
   };
   
-  // If showing results view after completion
+  // Add conditional rendering for showResults
   if (showResults) {
+    // Use finalElapsedTime if available, otherwise use current elapsedTime
+    const timeToShow = finalElapsedTime || elapsedTime;
+    
     return (
-      <div className="rounded-xl bg-white shadow-md overflow-hidden">
-        <QuizHeader 
-          title={quiz?.title || "Quiz Results"}
-          subtitle={quiz?.description}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        {/* <QuizHeader 
+          title="Quiz Results"
+          subtitle={quiz?.title || ""}
           onReturn={onReturn}
-        />
+          showTimer={false}
+        /> */}
         
         <div className="p-6">
-          <div className="mb-6 flex justify-between items-center">
-            <div className="flex space-x-6">
-              <button
-                className={`pb-2 border-b-2 font-medium text-sm flex items-center transition-colors ${
-                  activeTab === 'quiz' 
-                    ? 'border-blue-600 text-blue-700' 
-                    : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
-                }`}
-                onClick={() => setActiveTab('quiz')}
-              >
-                <Award className="mr-2 h-4 w-4" />
-                Quiz Results
-              </button>
-              
-              <button
-                className={`pb-2 border-b-2 font-medium text-sm flex items-center transition-colors ${
-                  activeTab === 'answers' 
-                    ? 'border-blue-600 text-blue-700' 
-                    : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
-                }`}
-                onClick={() => setActiveTab('answers')}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Your Answers
-              </button>
-            </div>
-          </div>
+          <QuizProgressSummary 
+            progressData={progressData}
+            isLoading={isLoadingProgress}
+            error={progressError}
+            elapsedTime={timeToShow}
+          />
           
-          <AnimatePresence mode="wait">
-            {activeTab === 'quiz' && (
-              <motion.div
-                key="results"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <QuizProgressSummary 
-                  progressData={progressData} 
-                  isLoading={isLoadingProgress} 
-                  error={progressError}
-                  elapsedTime={elapsedTime}
-                />
-              </motion.div>
-            )}
-            
-            {activeTab === 'answers' && (
-              <motion.div
-                key="answers"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <QuizAnswersList progressData={{ attempt: { answers: Object.values(answers) } }} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="mt-8">
+            <QuizAnswersList progressData={progressData} />
+          </div>
           
           <div className="mt-8 flex justify-center">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={onReturn}
-              className="inline-flex items-center px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+              onClick={handleBackToLearn} // Changed to use the new navigation function
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
             >
-              <ArrowLeft className="mr-1.5 -ml-1 h-5 w-5" />
-              Back to Lesson
+              <ArrowLeft className="mr-2 h-5 w-5" />
+              Return to Lesson
             </motion.button>
           </div>
         </div>
@@ -572,15 +579,15 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
   
   return (
     <div className="rounded-xl bg-white shadow-lg overflow-hidden">
-      <QuizHeader 
+      {/* <QuizHeader 
         title={quiz?.title || "Quiz"}
         subtitle={quiz?.description}
         onReturn={onReturn}
-        showTimer
         elapsedTime={elapsedTime}
-      />
+        showTimer
+        /> */}
       
-      <div className="p-6">
+      <div className="p-6 pb-24">
         {/* Resuming quiz notification */}
         {quizAttempt?.answers && quizAttempt.answers.length > 0 && (
           <motion.div 
@@ -601,26 +608,6 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
         {completionNotice && (
           <CompletionBanner />
         )}
-        
-        {/* Progress indicator */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
-            <span className="font-medium">Question {progress.current} of {progress.total}</span>
-            <div className="flex items-center space-x-4">
-              <span>{progress.answered} answered</span>
-              {flaggedQuestions.length > 0 && (
-                <button 
-                  onClick={() => setShowFlaggedPanel(!showFlaggedPanel)}
-                  className="inline-flex items-center text-red-600 hover:text-red-700 text-sm font-medium"
-                >
-                  <Flag className="h-4 w-4 mr-1" />
-                  {flaggedQuestions.length} Flagged
-                </button>
-              )}
-            </div>
-          </div>
-          <ProgressBar percentage={progress.percentage} />
-        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Left side - Question navigator on larger screens */}
@@ -687,18 +674,8 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
           </div>
         </div>
                 
-        {/* Navigation controls */}
-        <div className="mt-8">
-          <NavigationControls 
-            currentIndex={currentQuestionIndex}
-            totalQuestions={totalQuestions}
-            onPrevious={goToPreviousQuestion}
-            onNext={goToNextQuestion}
-          />
-        </div>
-        
-        {/* Mobile Question navigator */}
-        <div className="mt-8 block md:hidden">
+        {/* Mobile Question navigator (above fixed navigation) */}
+        <div className="mt-8 mb-10 block md:hidden">
           <QuestionNavigator 
             questions={quiz.questions}
             currentIndex={currentQuestionIndex}
@@ -710,7 +687,7 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
         </div>
         
         {/* Quiz completion status */}
-        <div className="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-4">
+        {/* <div className="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center mb-2 sm:mb-0">
               <FileText className="h-5 w-5 text-blue-600 mr-2" />
@@ -734,7 +711,7 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
               )}
             </div>
           </div>
-        </div>
+        </div> */}
         
         {/* Find unanswered questions button - show only if there are unanswered questions */}
         {progress.answered < totalQuestions && (
@@ -751,6 +728,16 @@ const QuizManagerContent = ({ quiz, onComplete, onReturn }) => {
           </div>
         )}
       </div>
+      
+      {/* Fixed Navigation Bar - always visible at bottom of screen */}
+      <FixedNavigationBar 
+        currentIndex={currentQuestionIndex}
+        totalQuestions={totalQuestions}
+        answeredQuestions={progress.answered}
+        progressPercentage={progress.percentage}
+        onPrevious={goToPreviousQuestion}
+        onNext={goToNextQuestion}
+      />
     </div>
   );
 };

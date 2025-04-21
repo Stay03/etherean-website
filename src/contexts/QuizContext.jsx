@@ -22,6 +22,9 @@ const initialState = {
   flaggedQuestions: [],
   startTime: null,
   elapsedTime: 0,
+  finalElapsedTime: null,
+  // Add showResults state to control when to show results view
+  showResults: false
 };
 
 // Action types
@@ -42,6 +45,10 @@ const ActionTypes = {
   UPDATE_ELAPSED_TIME: 'UPDATE_ELAPSED_TIME',
   SET_START_TIME: 'SET_START_TIME',
   RESET_STATE: 'RESET_STATE',
+  // Add a new action type for showing results
+  SET_SHOW_RESULTS: 'SET_SHOW_RESULTS',
+  // Add action for freezing final elapsed time
+  SET_FINAL_ELAPSED_TIME: 'SET_FINAL_ELAPSED_TIME'
 };
 
 // Reducer function
@@ -113,6 +120,12 @@ function quizReducer(state, action) {
     case ActionTypes.SET_START_TIME:
       return { ...state, startTime: action.payload };
     
+    case ActionTypes.SET_SHOW_RESULTS:
+      return { ...state, showResults: action.payload };
+    
+    case ActionTypes.SET_FINAL_ELAPSED_TIME:
+      return { ...state, finalElapsedTime: action.payload };
+    
     case ActionTypes.RESET_STATE:
       return { 
         ...initialState,
@@ -132,18 +145,25 @@ export const QuizProvider = ({ children, quiz, onComplete }) => {
     startTime: new Date(), // Initialize start time on mount
   });
   
-  // Timer effect for tracking elapsed time
-  useEffect(() => {
-    if (!state.startTime || state.isComplete) return;
+// Timer effect for tracking elapsed time
+useEffect(() => {
+    if (!state.startTime || state.isComplete || state.showResults) {
+      // Don't start or continue timer if:
+      // - startTime is not set
+      // - quiz is complete
+      // - showing results view
+      return;
+    }
     
     const timerInterval = setInterval(() => {
-      const now = new Date();
-      const elapsed = Math.floor((now - state.startTime) / 1000); // in seconds
-      dispatch({ type: ActionTypes.UPDATE_ELAPSED_TIME, payload: elapsed });
+      dispatch({ 
+        type: ActionTypes.UPDATE_ELAPSED_TIME, 
+        payload: state.elapsedTime + 1 // Increment by 1 second
+      });
     }, 1000);
     
     return () => clearInterval(timerInterval);
-  }, [state.startTime, state.isComplete]);
+  }, [state.startTime, state.isComplete, state.showResults, state.elapsedTime]);
 
   // Initialize quiz attempt
   useEffect(() => {
@@ -250,10 +270,17 @@ export const QuizProvider = ({ children, quiz, onComplete }) => {
         payload: response.data 
       });
       
-      // If quiz is already completed, mark it as complete
+      // If quiz is already completed, show results view
       if (response.data?.is_completed) {
+        // Freeze the elapsed time
+        dispatch({ 
+          type: ActionTypes.SET_FINAL_ELAPSED_TIME, 
+          payload: state.elapsedTime 
+        });
+        
         dispatch({ type: ActionTypes.SET_COMPLETE, payload: true });
         dispatch({ type: ActionTypes.SET_RESULTS, payload: response.data });
+        dispatch({ type: ActionTypes.SET_SHOW_RESULTS, payload: true });
         
         if (onComplete) {
           onComplete(response.data);
@@ -394,6 +421,20 @@ export const QuizProvider = ({ children, quiz, onComplete }) => {
       payload: questionId
     });
   };
+
+  // Show results view
+  const showResults = () => {
+    // Freeze the elapsed time first
+    dispatch({
+      type: ActionTypes.SET_FINAL_ELAPSED_TIME,
+      payload: state.elapsedTime
+    });
+    
+    dispatch({
+      type: ActionTypes.SET_SHOW_RESULTS,
+      payload: true
+    });
+  };
   
   // Calculate progress statistics
   const progress = useMemo(() => {
@@ -426,6 +467,8 @@ export const QuizProvider = ({ children, quiz, onComplete }) => {
     progress,
     flaggedQuestions: state.flaggedQuestions,
     elapsedTime: state.elapsedTime,
+    finalElapsedTime: state.finalElapsedTime,
+    showResults: state.showResults,
     
     // Progress data
     progressData: state.progressData,
@@ -440,7 +483,8 @@ export const QuizProvider = ({ children, quiz, onComplete }) => {
     isCurrentQuestionAnswered,
     flagCurrentQuestion,
     unflagQuestion,
-    refetchProgress: () => fetchQuizProgress(quiz?.id)
+    refetchProgress: () => fetchQuizProgress(quiz?.id),
+    showResults
   };
 
   return (

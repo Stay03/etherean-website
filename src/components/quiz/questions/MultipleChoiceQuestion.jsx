@@ -1,10 +1,11 @@
 // src/components/quiz/questions/MultipleChoiceQuestion.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Save } from 'lucide-react';
 
 /**
  * Component for rendering multiple choice or true/false quiz questions
+ * with a manual save button rather than auto-submit
  * 
  * @param {Object} props
  * @param {Object} props.question - Question data
@@ -31,15 +32,18 @@ const MultipleChoiceQuestion = ({
     }
   }, [answer]);
   
-  // Handle option selection
-  const handleOptionSelect = async (optionId) => {
+  // Handle option selection (just update local state, don't submit)
+  const handleOptionSelect = (optionId) => {
     if (isAnswered || isSubmitting) return;
-    
     setSelectedOption(optionId);
+  };
+  
+  // Handle save/submit button click
+  const handleSubmit = async () => {
+    if (isAnswered || isSubmitting || !selectedOption) return;
     
-    // Submit the answer
     try {
-      await onSubmitAnswer({ optionId });
+      await onSubmitAnswer({ optionId: selectedOption });
       
       // Show feedback briefly
       setShowFeedback(true);
@@ -138,6 +142,7 @@ const MultipleChoiceQuestion = ({
               disabled={isSubmitting || isAnswered}
               className={`w-full text-left p-4 rounded-lg border transition-all focus:outline-none ${optionStyle}
                 ${isAnswered ? 'cursor-default' : 'cursor-pointer'}`}
+              type="button" // Ensure it doesn't submit forms
             >
               <div className="flex items-center">
                 <div className={`flex-shrink-0 h-5 w-5 rounded-full border 
@@ -152,6 +157,35 @@ const MultipleChoiceQuestion = ({
           );
         })}
       </div>
+      
+      {/* Save Answer button (only show if not answered yet) */}
+      {!isAnswered && (
+        <div className="flex justify-end mt-4">
+          <motion.button
+            whileHover={{ scale: selectedOption && !isSubmitting ? 1.05 : 1 }}
+            whileTap={{ scale: selectedOption && !isSubmitting ? 0.95 : 1 }}
+            onClick={handleSubmit}
+            disabled={!selectedOption || isSubmitting}
+            className={`inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium transition-colors
+              ${!selectedOption || isSubmitting 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'}`}
+            type="button"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Answer
+              </>
+            )}
+          </motion.button>
+        </div>
+      )}
       
       {/* Loading indicator while submitting */}
       {isSubmitting && (
