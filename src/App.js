@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
 import ScrollToTop from './components/ScrollToTop';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -15,8 +16,9 @@ const CourseLearnPage = lazy(() => import('./pages/CourseLearnPage'));
 const MyItemsPage = lazy(() => import('./pages/MyItemsPage'));
 const ShopPage = lazy(() => import('./pages/ShopPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
-// Add new MembershipPage import
 const MembershipPage = lazy(() => import('./pages/MembershipPage'));
+// Add new CartPage import
+const CartPage = lazy(() => import('./pages/CartPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -59,8 +61,9 @@ const AppContent = () => {
                 <Route path="/my-items" element={<MyItemsPage />} />
                 <Route path="/shop" element={<ShopPage />} />
                 <Route path="/product/:slug" element={<ProductDetailPage />} />
-                {/* Add new route for membership page */}
                 <Route path="/membership" element={<MembershipPage />} />
+                {/* Add new route for cart page */}
+                <Route path="/cart" element={<CartPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
@@ -91,10 +94,12 @@ const AppContent = () => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <AppContent />
-      </Router>
+      <CartProvider>
+        <Router>
+          <ScrollToTop />
+          <AppContent />
+        </Router>
+      </CartProvider>
     </AuthProvider>
   );
 }

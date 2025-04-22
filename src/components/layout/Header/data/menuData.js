@@ -33,6 +33,11 @@ export const menuItems = [
       path: '/shop', 
       hasDropdown: false 
     },
+    { 
+      name: 'Cart', 
+      path: '/cart', 
+      hasDropdown: false 
+    }
   ];
   
   // Auth states can be expanded later with actual authentication
