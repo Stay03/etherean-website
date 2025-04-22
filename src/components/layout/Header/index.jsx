@@ -46,7 +46,7 @@ const Header = () => {
   };
 
   // Dynamic classes for the header based on scroll state
-  const headerClasses = `w-full z-10 transition-all duration-300 ${
+  const headerClasses = `w-full z-20 transition-all duration-300 ${
     isScrolled 
       ? 'fixed top-0 bg-white shadow-md' 
       : 'absolute bg-transparent'

@@ -18,13 +18,12 @@ const MyItemsPage = lazy(() => import('./pages/MyItemsPage'));
 const ShopPage = lazy(() => import('./pages/ShopPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const MembershipPage = lazy(() => import('./pages/MembershipPage'));
-// Add new CartPage import
 const CartPage = lazy(() => import('./pages/CartPage'));
-// Add new CheckoutPage import
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
-// Add new PaymentPage import
 const PaymentPage = lazy(() => import('./pages/PaymentPage'));
 const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
+const EventsPage = lazy(() => import('./pages/EventsPage'));
+const EventDetailPage = lazy(() => import('./pages/EventDetailPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -69,15 +68,13 @@ const AppContent = () => {
                 <Route path="/shop" element={<ShopPage />} />
                 <Route path="/product/:slug" element={<ProductDetailPage />} />
                 <Route path="/membership" element={<MembershipPage />} />
-                {/* Add new route for cart page */}
                 <Route path="/cart" element={<CartPage />} />
-                {/* Add new route for checkout page */}
                 <Route path="/checkout" element={<CheckoutPage />} />
-                {/* Add new route for payment page */}
                 <Route path="/payment/:orderId" element={<PaymentPage />} />
-                {/* Add new route for payment page */}
                 <Route path="/payment" element={<PaymentPage />} />
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
+                <Route path="/events" element={<EventsPage />} />
+                <Route path="/events/:slug" element={<EventDetailPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

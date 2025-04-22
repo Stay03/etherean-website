@@ -5,9 +5,13 @@
     "max_file_size_mb": 5,
     "include_paths": [
     "src/App.js",
-    "src/components/home/FeaturedSection.jsx",
-    "src/hooks/useCourses.js",
+    "src/services/api/endpoints.js",
+    "src/services/api/client.js",
     "src/pages/HomePage.jsx",
-    "src/services/api/courseService.js"
+    "src/hooks/useEvents.js",
+    "src/hooks/useEventSlider.js",
+    "src/components/home/EventsSlider.jsx",
+    "src/components/home/EventsSlider/EventCard.jsx"
+
 ]
 }
