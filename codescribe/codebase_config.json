@@ -5,15 +5,9 @@
     "max_file_size_mb": 5,
     "include_paths": [
     "src/App.js",
-    "src/pages/CheckoutPage.jsx",
-    "src/services/api/addressService.js",
-    "src/services/api/orderService.js",
-    "src/hooks/useAddresses.js",
-    "src/hooks/useCheckout.js",
-    "src/contexts/CheckoutContext.jsx",
-    "src/contexts/CartContext.jsx",
-    "src/services/api/endpoints.js",
-    "src/components/courses/EnrollButton.jsx",
-    "src/services/api/paymentService.js"
+    "src/components/home/FeaturedSection.jsx",
+    "src/hooks/useCourses.js",
+    "src/pages/HomePage.jsx",
+    "src/services/api/courseService.js"
 ]
 }

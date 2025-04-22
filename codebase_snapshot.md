@@ -1,19 +1,13 @@
 # Codebase Documentation
 
 {
-  "Extraction Date": "2025-04-22 03:52:26",
+  "Extraction Date": "2025-04-22 13:52:10",
   "Include Paths": [
     "src/App.js",
-    "src/pages/CheckoutPage.jsx",
-    "src/services/api/addressService.js",
-    "src/services/api/orderService.js",
-    "src/hooks/useAddresses.js",
-    "src/hooks/useCheckout.js",
-    "src/contexts/CheckoutContext.jsx",
-    "src/contexts/CartContext.jsx",
-    "src/services/api/endpoints.js",
-    "src/components/courses/EnrollButton.jsx",
-    "src/services/api/paymentService.js"
+    "src/components/home/FeaturedSection.jsx",
+    "src/hooks/useCourses.js",
+    "src/pages/HomePage.jsx",
+    "src/services/api/courseService.js"
   ]
 }
 
@@ -43,6 +37,9 @@ const MembershipPage = lazy(() => import('./pages/MembershipPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 // Add new CheckoutPage import
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+// Add new PaymentPage import
+const PaymentPage = lazy(() => import('./pages/PaymentPage'));
+const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -91,6 +88,11 @@ const AppContent = () => {
                 <Route path="/cart" element={<CartPage />} />
                 {/* Add new route for checkout page */}
                 <Route path="/checkout" element={<CheckoutPage />} />
+                {/* Add new route for payment page */}
+                <Route path="/payment/:orderId" element={<PaymentPage />} />
+                {/* Add new route for payment page */}
+                <Route path="/payment" element={<PaymentPage />} />
+                <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
@@ -151,1270 +153,487 @@ const NotFound = () => (
 export default App;
 ```
 
-### src/pages/CheckoutPage.jsx
+### src/components/home/FeaturedSection.jsx
 ```
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useCheckoutContext } from '../contexts/CheckoutContext';
-import useCart from '../hooks/useCart';
-import Breadcrumb from '../components/Breadcrumb';
-import AddressSelector from '../components/checkout/AddressSelector';
-import OrderSummary from '../components/checkout/OrderSummary';
-import ShippingMethod from '../components/checkout/ShippingMethod';
-import { toast } from 'react-toastify';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useCallback, memo } from 'react';
+import PropTypes from 'prop-types';
 
-const CheckoutPage = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const { cart, isLoading: cartLoading } = useCart();
+// Import images from assets folder
+import libraryImage from '../../assets/library.jpg';
+import empHeaderImage from '../../assets/emp-header.jpg';
+import ppkgImage from '../../assets/ppkg.jpg';
+import neosImage from '../../assets/neos.webp';
+
+// Default featured items data structure
+const DEFAULT_FEATURED_ITEMS = [
+  {
+    id: 'feature1',
+    title: 'Cosmic Consciousness',
+    description: 'Explore the connection between universal awareness and personal transformation',
+    imageUrl: libraryImage,
+    linkUrl: '/programs/cosmic-consciousness',
+    category: 'Program'
+  },
+  {
+    id: 'feature2',
+    title: 'Quantum Healing',
+    description: 'Harness energy frequencies to restore balance and promote cellular regeneration',
+    imageUrl: empHeaderImage,
+    linkUrl: '/practices/quantum-healing',
+    category: 'Practice'
+  },
+  {
+    id: 'feature3',
+    title: 'Astral Projection Workshop',
+    description: 'Learn techniques to safely explore consciousness beyond physical limitations',
+    imageUrl: ppkgImage,
+    linkUrl: '/workshops/astral-projection',
+    category: 'Workshop'
+  },
+  {
+    id: 'feature4',
+    title: 'Ancient Wisdom Library',
+    description: 'Access our curated collection of spiritual texts from traditions worldwide',
+    imageUrl: neosImage,
+    linkUrl: '/resources/wisdom-library',
+    category: 'Resource'
+  }
+];
+
+// Individual Feature Card component
+// Individual Feature Card component
+// Individual Feature Card component
+const FeatureCard = memo(({ item, index }) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
   
-  const {
-    step,
-    selectedShippingAddress,
-    setSelectedShippingAddress,
-    selectedBillingAddress,
-    setSelectedBillingAddress,
-    sameAsShipping,
-    setSameAsShipping,
-    shippingMethod,
-    setShippingMethod,
-    orderNotes,
-    setOrderNotes,
-    hasPhysicalItems,
-    isCreatingOrder,
-    submitOrder,
-    nextStep,
-    previousStep,
-    resetCheckoutState
-  } = useCheckoutContext();
+    // Handle image loading
+    const handleImageLoad = useCallback(() => {
+      setIsLoading(false);
+    }, []);
   
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/cart');
-    }
-  }, [isAuthenticated, navigate]);
+    // Handle image error
+    const handleImageError = useCallback(() => {
+      setIsLoading(false);
+      setError('Failed to load image');
+    }, []);
   
-  useEffect(() => {
-    return () => {
-      resetCheckoutState();
-    };
-  }, [resetCheckoutState]);
+    // Derive a fallback color based on index for error state
+    const fallbackColors = [
+      'bg-gradient-to-br from-purple-700 to-indigo-900',
+      'bg-gradient-to-br from-yellow-500 to-amber-700',
+      'bg-gradient-to-br from-blue-500 to-cyan-700',
+      'bg-gradient-to-br from-green-600 to-emerald-800'
+    ];
   
-  const breadcrumbItems = [
-    { label: 'Home', path: '/' },
-    { label: 'Cart', path: '/cart' },
-    { label: 'Checkout', path: '/checkout' }
-  ];
-  
-  const handleNextStep = () => {
-    const canProceed = nextStep();
-    if (!canProceed) {
-      if (!selectedShippingAddress) {
-        toast.error('Please select a shipping address');
-      } else if (!sameAsShipping && !selectedBillingAddress) {
-        toast.error('Please select a billing address');
-      }
-    }
-  };
-  
-  const handleSubmitOrder = async () => {
-    try {
-      const order = await submitOrder();
-      if (order) {
-        navigate(`/payment/${order.id}`);
-      }
-    } catch (error) {
-      console.error('Order submission error:', error);
-    }
-  };
-  
-  if (cartLoading) {
     return (
-      <div className="w-full bg-gray-50 min-h-screen">
-        <Breadcrumb items={breadcrumbItems} onNavigate={(path) => navigate(path)} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-10 bg-gray-200 rounded-xl w-1/4 mb-8"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="h-40 bg-gray-200 rounded-2xl"></div>
-                <div className="h-40 bg-gray-200 rounded-2xl"></div>
-              </div>
-              <div className="lg:col-span-1">
-                <div className="h-64 bg-gray-200 rounded-2xl"></div>
-              </div>
-            </div>
+      <a 
+        href={item.linkUrl}
+        className="group relative block w-full h-80 overflow-hidden rounded-2xl transition-all duration-500 transform hover:-translate-y-1"
+      >
+        {/* Top-right decorative curve SVG */}
+        <div className="absolute top-0 right-0 z-10 pointer-events-none transition-all duration-700 ease-in-out group-hover:opacity-0">
+          <svg width="111" height="111" viewBox="0 0 111 111" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fillRule="evenodd" clipRule="evenodd" d="M0 0C19.33 0 35 15.67 35 35V41C35 60.33 50.67 76 70 76H76C95.33 76 111 91.67 111 111V0H0Z" fill="white" />
+          </svg>
+        </div>
+        
+        {/* Document icon that appears on hover */}
+        <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-all duration-700 ease-in-out transform translate-y-2 group-hover:translate-y-0">
+          <div className="bg-yellow-500 rounded-full w-12 h-12 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-900" viewBox="0 0 24 24" fill="currentColor">
+              <path fillRule="evenodd" d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4zm2 0v16h10V4H7z" clipRule="evenodd" />
+              <path d="M15 8H9v2h6V8zM15 12H9v2h6v-2zM15 16H9v2h6v-2z" />
+            </svg>
           </div>
         </div>
-      </div>
-    );
-  }
-  
-  if (!cart?.items?.length) {
-    return (
-      <div className="w-full bg-gray-50 min-h-screen">
-        <Breadcrumb items={breadcrumbItems} onNavigate={(path) => navigate(path)} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="text-center bg-white rounded-3xl shadow-lg p-12">
-            <div className="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-              <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+            <div className="w-10 h-10 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+        
+        {/* Image or fallback */}
+        {error ? (
+          <div className={`absolute inset-0 ${fallbackColors[index % fallbackColors.length]}`}>
+            <div className="absolute inset-0 opacity-20">
+              <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path d="M0,0 L100,100 M100,0 L0,100" stroke="white" strokeWidth="1" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
-            <p className="text-gray-600 mb-8">Add items to your cart before checking out.</p>
-            <button
-              onClick={() => navigate('/shop')}
-              className="px-8 py-3 bg-yellow-500 text-gray-900 rounded-xl font-semibold hover:bg-yellow-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-            >
-              Continue Shopping
-            </button>
           </div>
+        ) : (
+          <div className="absolute inset-0 bg-gray-200">
+            {/* Image with no overlay */}
+            <img 
+              src={item.imageUrl}
+              alt={item.title}
+              className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+          </div>
+        )}
+        
+        {/* Light blue footer with only h3 title and angled arrow */}
+        <div className="absolute bottom-0 left-0 right-0 bg-blue-100 p-4 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-gray-800 transition-transform duration-300 group-hover:translate-x-2">
+            {item.title}
+          </h3>
+          
+          {/* Arrow icon rotated -45 degrees */}
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800 transform -rotate-45 transition-all duration-300 group-hover:scale-110" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
         </div>
-      </div>
+      </a>
     );
-  }
-  
-  const stepVariants = {
-    enter: (direction) => ({
-      x: direction > 0 ? 1000 : -1000,
-      opacity: 0
-    }),
-    center: {
-      x: 0,
-      opacity: 1
-    },
-    exit: (direction) => ({
-      x: direction < 0 ? 1000 : -1000,
-      opacity: 0
-    })
-  };
-  
+  });
+
+FeatureCard.propTypes = {
+  item: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+    imageUrl: PropTypes.string.isRequired,
+    linkUrl: PropTypes.string.isRequired,
+    category: PropTypes.string.isRequired
+  }).isRequired,
+  index: PropTypes.number.isRequired
+};
+
+// Main Featured Section component
+const FeaturedSection = ({ featuredItems = DEFAULT_FEATURED_ITEMS }) => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulate loading state for smoother transition
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="w-full bg-gray-50 min-h-screen">
-      <Breadcrumb items={breadcrumbItems} onNavigate={(path) => navigate(path)} />
+    <section className="w-full bg-white py-16 px-4 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute left-0 top-0 w-64 h-64 bg-yellow-500 opacity-5 rounded-full -ml-32 -mt-32"></div>
+      <div className="absolute right-0 bottom-0 w-96 h-96 bg-yellow-500 opacity-5 rounded-full -mr-48 -mb-48"></div>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Progress Steps */}
-        <div className="mb-12">
-          <div className="max-w-3xl mx-auto">
-            <div className="relative">
-              {/* Progress Line */}
-              <div className="absolute top-8 left-0 right-0 h-1 bg-gray-200">
-                <div 
-                  className="h-full bg-yellow-500 transition-all duration-500 ease-in-out"
-                  style={{ 
-                    width: `${((step - 1) / (hasPhysicalItems ? 2 : 1)) * 100}%` 
-                  }}
-                />
-              </div>
-              
-              {/* Steps */}
-              <div className="relative flex justify-between items-center">
-                {[
-                  { number: 1, title: 'Address', description: 'Delivery information' },
-                  ...(hasPhysicalItems ? [{ number: 2, title: 'Shipping', description: 'Select method' }] : []),
-                  { number: hasPhysicalItems ? 3 : 2, title: 'Review', description: 'Confirm details' }
-                ].map((s, idx) => (
-                  <div key={idx} className="flex flex-col items-center">
-                    <div 
-                      className={`w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-lg transition-all duration-300 ${
-                        step >= s.number 
-                          ? 'bg-yellow-500 text-gray-900 shadow-lg transform scale-110' 
-                          : 'bg-white text-gray-500 border-2 border-gray-200'
-                      }`}
-                    >
-                      {step > s.number ? (
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : s.number}
-                    </div>
-                    <div className="mt-4 text-center">
-                      <p className={`font-semibold ${step >= s.number ? 'text-yellow-600' : 'text-gray-500'}`}>
-                        {s.title}
-                      </p>
-                      <p className="text-sm text-gray-400 mt-1">{s.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+      <div className="max-w-6xl mx-auto">
+        {/* Section header with exact styling specifications */}
+        <div className="mb-10">
+          <div className="h-px bg-gray-300 w-full my-4"></div>
+          
+          {/* Modified flex container to stack on mobile */}
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 md:gap-0">
+            <p className="text-[24px] md:text-[34px] lg:text-[44px] font-semibold leading-[30px] md:leading-[40px] tracking-[-0.96px] text-[#292929] max-w-4xl">
+              Featured
+            </p>
+            
+            
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            <AnimatePresence mode="wait" custom={step}>
-              <motion.div
-                key={step}
-                custom={step}
-                variants={stepVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.3 }}
-              >
-                {step === 1 && (
-                  <div className="space-y-8">
-                    <div className="bg-white rounded-2xl shadow-sm p-8">
-                      <h2 className="text-2xl font-bold mb-6">Shipping Address</h2>
-                      <AddressSelector
-                        type="shipping"
-                        selectedAddress={selectedShippingAddress}
-                        onSelectAddress={setSelectedShippingAddress}
-                      />
-                    </div>
-                    
-                    <div className="bg-white rounded-2xl shadow-sm p-8">
-                      <label className="flex items-center cursor-pointer group">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={sameAsShipping}
-                            onChange={(e) => setSameAsShipping(e.target.checked)}
-                            className="sr-only"
-                          />
-                          <div className={`w-6 h-6 border-2 rounded-lg transition-all duration-200 ${
-                            sameAsShipping 
-                              ? 'bg-yellow-500 border-yellow-500' 
-                              : 'border-gray-300 group-hover:border-yellow-400'
-                          }`}>
-                            {sameAsShipping && (
-                              <svg className="w-4 h-4 text-gray-900 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                        <span className="ml-3 text-gray-700 font-medium">
-                          Billing address same as shipping
-                        </span>
-                      </label>
-                    </div>
-                    
-                    {!sameAsShipping && (
-                      <div className="bg-white rounded-2xl shadow-sm p-8">
-                        <h2 className="text-2xl font-bold mb-6">Billing Address</h2>
-                        <AddressSelector
-                          type="billing"
-                          selectedAddress={selectedBillingAddress}
-                          onSelectAddress={setSelectedBillingAddress}
-                        />
-                      </div>
-                    )}
+        {/* Loading state */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl overflow-hidden shadow-lg bg-gray-200 h-80 animate-pulse">
+                <div className="h-full w-full relative">
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <div className="h-5 w-20 bg-gray-300 rounded mb-3"></div>
+                    <div className="h-8 bg-gray-300 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-300 rounded mb-1"></div>
+                    <div className="h-4 bg-gray-300 rounded w-3/4 mb-4"></div>
+                    <div className="h-6 w-24 bg-gray-300 rounded"></div>
                   </div>
-                )}
-                
-                {step === 2 && hasPhysicalItems && (
-                  <div className="bg-white rounded-2xl shadow-sm p-8">
-                    <h2 className="text-2xl font-bold mb-6">Shipping Method</h2>
-                    <ShippingMethod
-                      selectedMethod={shippingMethod}
-                      onSelectMethod={setShippingMethod}
-                    />
-                  </div>
-                )}
-                
-                {((step === 3 && hasPhysicalItems) || (step === 2 && !hasPhysicalItems)) && (
-                  <div className="space-y-6">
-                    <h2 className="text-2xl font-bold mb-8">Review Your Order</h2>
-                    
-                    {/* Order Summary */}
-                    <div className="bg-white rounded-2xl shadow-sm p-8">
-                      <h3 className="text-lg font-semibold mb-6">Order Items</h3>
-                      {cart.items.map((item) => (
-                        <div key={item.id} className="flex items-center py-4 border-b last:border-0">
-                          <img
-                            src={item.thumbnail}
-                            alt={item.title}
-                            className="w-20 h-20 object-cover rounded-xl"
-                          />
-                          <div className="ml-6 flex-grow">
-                            <h4 className="font-semibold text-gray-900">{item.title}</h4>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {item.is_digital ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  Digital
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Physical
-                                </span>
-                              )} • Qty: {item.quantity}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-gray-900">
-                              ${parseFloat(item.subtotal).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Addresses Summary */}
-                    <div className="bg-white rounded-2xl shadow-sm p-8">
-                      <h3 className="text-lg font-semibold mb-6">Delivery Information</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3">Shipping Address</h4>
-                          <div className="bg-gray-50 rounded-xl p-4">
-                            <p className="font-medium text-gray-900">
-                              {selectedShippingAddress?.name}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {selectedShippingAddress?.address_line_1}<br />
-                              {selectedShippingAddress?.address_line_2 && 
-                                <>{selectedShippingAddress.address_line_2}<br /></>
-                              }
-                              {selectedShippingAddress?.city}, {selectedShippingAddress?.state} {selectedShippingAddress?.postal_code}<br />
-                              {selectedShippingAddress?.country}
-                            </p>
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3">Billing Address</h4>
-                          <div className="bg-gray-50 rounded-xl p-4">
-                            {sameAsShipping ? (
-                              <p className="text-sm text-gray-600">Same as shipping address</p>
-                            ) : (
-                              <>
-                                <p className="font-medium text-gray-900">
-                                  {selectedBillingAddress?.name}
-                                </p>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  {selectedBillingAddress?.address_line_1}<br />
-                                  {selectedBillingAddress?.address_line_2 && 
-                                    <>{selectedBillingAddress.address_line_2}<br /></>
-                                  }
-                                  {selectedBillingAddress?.city}, {selectedBillingAddress?.state} {selectedBillingAddress?.postal_code}<br />
-                                  {selectedBillingAddress?.country}
-                                </p>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Order Notes */}
-                    <div className="bg-white rounded-2xl shadow-sm p-8">
-                      <h3 className="text-lg font-semibold mb-4">Order Notes (Optional)</h3>
-                      <textarea
-                        value={orderNotes}
-                        onChange={(e) => setOrderNotes(e.target.value)}
-                        placeholder="Add any special instructions for your order..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 resize-none placeholder-gray-400"
-                        rows="4"
-                      />
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-            
-            {/* Navigation Buttons */}
-            <div className="mt-12 flex justify-between items-center">
-              {step > 1 ? (
-                <button
-                  onClick={previousStep}
-                  className="inline-flex items-center px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Back
-                </button>
-              ) : (
-                <button
-                  onClick={() => navigate('/cart')}
-                  className="inline-flex items-center px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Return to Cart
-                </button>
-              )}
-              
-              {((step === 3 && hasPhysicalItems) || (step === 2 && !hasPhysicalItems)) ? (
-                <button
-                  onClick={handleSubmitOrder}
-                  disabled={isCreatingOrder}
-                  className={`inline-flex items-center px-8 py-3 bg-yellow-500 text-gray-900 rounded-xl font-semibold shadow-md hover:shadow-lg transform transition-all duration-200 
-                    ${isCreatingOrder ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-600 hover:-translate-y-0.5'}`}
-                >
-                  {isCreatingOrder ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-900" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Continue to Payment
-                      <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </>
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={handleNextStep}
-                  className="inline-flex items-center px-8 py-3 bg-yellow-500 text-gray-900 rounded-xl font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 hover:bg-yellow-600 transition-all duration-200"
-                >
-                  Continue
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              )}
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
-          
-          {/* Order Summary Sidebar */}
-          <div className="lg:col-span-1">
-            <OrderSummary cart={cart} />
+        ) : (
+          /* Featured items grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            {featuredItems.map((item, index) => (
+              <FeatureCard 
+                key={item.id} 
+                item={item} 
+                index={index} 
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+FeaturedSection.propTypes = {
+  featuredItems: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      title: PropTypes.string.isRequired,
+      description: PropTypes.string.isRequired,
+      imageUrl: PropTypes.string.isRequired,
+      linkUrl: PropTypes.string.isRequired,
+      category: PropTypes.string.isRequired
+    })
+  )
+};
+
+export default memo(FeaturedSection);
+```
+
+### src/hooks/useCourses.js
+```
+import { useState, useEffect, useCallback } from 'react';
+import apiClient from '../services/api/client';
+import endpoints from '../services/api/endpoints';
+
+/**
+ * Custom hook to fetch and manage courses data
+ * 
+ * @param {Object} filters - Object containing filter parameters
+ * @returns {Object} - Object containing courses data, loading state, error state, and refetch function
+ */
+const useCourses = (filters = {}) => {
+  const [courses, setCourses] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Function to fetch courses from API
+  const fetchCourses = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await apiClient.get(endpoints.courses.list, filters);
+      
+      // Check if response has the expected structure
+      if (response && response.courses) {
+        setCourses(response.courses.data || []);
+        
+        // Extract pagination data
+        const { 
+          current_page, 
+          first_page_url, 
+          last_page, 
+          last_page_url,
+          next_page_url, 
+          prev_page_url, 
+          total, 
+          per_page 
+        } = response.courses;
+        
+        setPagination({
+          current_page,
+          first_page_url,
+          last_page,
+          last_page_url,
+          next_page_url,
+          prev_page_url,
+          total,
+          per_page
+        });
+      } else {
+        setCourses([]);
+        setPagination(null);
+        setError({ message: 'Unexpected API response format' });
+      }
+    } catch (err) {
+      setCourses([]);
+      setPagination(null);
+      setError(err);
+      console.error('Failed to fetch courses:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters]);
+
+  // Fetch courses when filters change
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
+
+  return {
+    courses,
+    pagination,
+    isLoading,
+    error,
+    refetch: fetchCourses
+  };
+};
+
+export default useCourses;
+```
+
+### src/pages/HomePage.jsx
+```
+import React, { memo } from 'react';
+import HeroSlider from '../components/home/HeroSlider';
+import MarqueeSlider from '../components/home/MarqueeSlider';
+import EventsSlider from '../components/home/EventsSlider';
+import RecentStreams from '../components/home/RecentStreams';
+import FeaturedSection from '../components/home/FeaturedSection';
+import VisitUsSection from '../components/home/VisitUsSection';
+import useBanners from '../hooks/useBanner';
+
+/**
+ * HomePage Component
+ * Manages all sections of the home page, including data fetching
+ */
+const HomePage = () => {
+  // Fetch banners for hero slider
+  const { 
+    banners, 
+    isLoading: bannersLoading, 
+    error: bannersError 
+  } = useBanners({
+    page: 1,
+    platform: 'EL',
+    status: 'active',
+    current: true,
+    orderBy: 'display_order',
+    orderDir: 'asc'
+  });
+
+  return (
+    <div className="w-full">
+      {/* Hero section - Full width and full height */}
+      <div className="w-full relative h-screen bg-white">
+        <HeroSlider 
+          banners={banners} 
+          isLoading={bannersLoading} 
+          error={bannersError} 
+        />
+      </div>
+      
+      {/* CTA Section - Full width white background */}
+      <div className="w-full bg-white py-16 cta-area style-2">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="section-title">
+            <div className="sec-content">
+              <p className="title text-gray-800
+                text-4xl leading-tight tracking-tighter
+                sm:text-5xl sm:leading-snug
+                md:text-5xl md:leading-relaxed
+                lg:text-6xl lg:leading-tight lg:tracking-tight
+                xl:text-center 2xl:text-center">
+                Our Mission is to provide you with the Tools for the activation and free expression of your innate potentials for the realization of your inner peace. Simple, We are the restorers of PEACE.
+              </p>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Other sections */}
+      <MarqueeSlider />
+      <FeaturedSection />
+      
+      {/* EventsSlider now uses the API endpoint */}
+      <EventsSlider />
+      
+      <RecentStreams />
+      <VisitUsSection />
     </div>
   );
 };
 
-export default CheckoutPage;
+export default memo(HomePage);
 ```
 
-### src/services/api/addressService.js
+### src/services/api/courseService.js
 ```
+/**
+ * Course Service
+ * Centralizes all course-related API calls
+ */
+
 import apiClient from './client';
 import endpoints from './endpoints';
 
 /**
- * Address service for handling address-related API operations
- */
-const addressService = {
-  /**
-   * Get all addresses for the current user
-   * @returns {Promise} List of addresses
-   */
-  getAddresses: async () => {
-    try {
-      const response = await apiClient.get(endpoints.addresses.get);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Create a new address
-   * @param {Object} addressData - Address data to create
-   * @returns {Promise} Created address data
-   */
-  createAddress: async (addressData) => {
-    try {
-      const response = await apiClient.post(endpoints.addresses.create, addressData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Update an existing address
-   * @param {number} addressId - ID of the address to update
-   * @param {Object} addressData - Updated address data
-   * @returns {Promise} Updated address data
-   */
-  updateAddress: async (addressId, addressData) => {
-    try {
-      const response = await apiClient.put(endpoints.addresses.update(addressId), addressData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Delete an address
-   * @param {number} addressId - ID of the address to delete
-   * @returns {Promise} Success response
-   */
-  deleteAddress: async (addressId) => {
-    try {
-      const response = await apiClient.delete(endpoints.addresses.delete(addressId));
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Set an address as default
-   * @param {number} addressId - ID of the address to set as default
-   * @returns {Promise} Updated address data
-   */
-  setDefaultAddress: async (addressId) => {
-    try {
-      const response = await apiClient.post(endpoints.addresses.setDefault(addressId));
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-};
-
-export default addressService;
-```
-
-### src/services/api/orderService.js
-```
-import apiClient from './client';
-import endpoints from './endpoints';
-
-/**
- * Order service for handling order-related API operations
- */
-const orderService = {
-  /**
-   * Create a new order
-   * @param {Object} orderData - Order data including addresses, shipping method, etc.
-   * @returns {Promise} Created order data
-   */
-  createOrder: async (orderData) => {
-    try {
-      const response = await apiClient.post(endpoints.orders.create, orderData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Get order details by ID
-   * @param {number} orderId - ID of the order
-   * @returns {Promise} Order details
-   */
-  getOrder: async (orderId) => {
-    try {
-      const response = await apiClient.get(endpoints.orders.get(orderId));
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Get list of orders for the current user
-   * @returns {Promise} List of orders
-   */
-  getOrders: async () => {
-    try {
-      const response = await apiClient.get(endpoints.orders.list);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Cancel an order
-   * @param {number} orderId - ID of the order to cancel
-   * @returns {Promise} Success response
-   */
-  cancelOrder: async (orderId) => {
-    try {
-      const response = await apiClient.post(endpoints.orders.cancel(orderId));
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-};
-
-export default orderService;
-```
-
-### src/hooks/useAddresses.js
-```
-import { useState, useCallback } from 'react';
-import addressService from '../services/api/addressService';
-import { toast } from 'react-toastify';
-
-/**
- * Custom hook for managing user addresses
- */
-const useAddresses = () => {
-  const [addresses, setAddresses] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  /**
-   * Fetch all addresses
-   */
-  const fetchAddresses = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await addressService.getAddresses();
-      if (response.success) {
-        setAddresses(response.addresses);
-      }
-    } catch (err) {
-      setError(err);
-      toast.error('Failed to load addresses');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  /**
-   * Create a new address
-   */
-  const createAddress = async (addressData) => {
-    try {
-      setIsLoading(true);
-      const response = await addressService.createAddress(addressData);
-      if (response.success) {
-        setAddresses(prev => [...prev, response.address]);
-        toast.success('Address added successfully');
-        return response.address;
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to create address');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Update an existing address
-   */
-  const updateAddress = async (addressId, addressData) => {
-    try {
-      setIsLoading(true);
-      const response = await addressService.updateAddress(addressId, addressData);
-      if (response.success) {
-        setAddresses(prev => 
-          prev.map(addr => addr.id === addressId ? response.address : addr)
-        );
-        toast.success('Address updated successfully');
-        return response.address;
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to update address');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Delete an address
-   */
-  const deleteAddress = async (addressId) => {
-    try {
-      setIsLoading(true);
-      const response = await addressService.deleteAddress(addressId);
-      if (response.success) {
-        setAddresses(prev => prev.filter(addr => addr.id !== addressId));
-        toast.success('Address deleted successfully');
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to delete address');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Set an address as default
-   */
-  const setDefaultAddress = async (addressId) => {
-    try {
-      setIsLoading(true);
-      const response = await addressService.setDefaultAddress(addressId);
-      if (response.success) {
-        setAddresses(prev => 
-          prev.map(addr => ({
-            ...addr,
-            is_default: addr.id === addressId
-          }))
-        );
-        toast.success('Default address updated');
-        return response.address;
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to set default address');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return {
-    addresses,
-    isLoading,
-    error,
-    fetchAddresses,
-    createAddress,
-    updateAddress,
-    deleteAddress,
-    setDefaultAddress
-  };
-};
-
-export default useAddresses;
-```
-
-### src/hooks/useCheckout.js
-```
-import { useState, useCallback } from 'react';
-import orderService from '../services/api/orderService';
-import { toast } from 'react-toastify';
-
-/**
- * Custom hook for managing the checkout process
- */
-const useCheckout = () => {
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-  const [orderError, setOrderError] = useState(null);
-  const [currentOrder, setCurrentOrder] = useState(null);
-
-  /**
-   * Create a new order with the provided checkout data
-   */
-  const createOrder = useCallback(async (orderData) => {
-    try {
-      setIsCreatingOrder(true);
-      setOrderError(null);
-      
-      const response = await orderService.createOrder(orderData);
-      
-      if (response.success) {
-        setCurrentOrder(response.order);
-        toast.success('Order created successfully');
-        return response.order;
-      }
-    } catch (err) {
-      setOrderError(err);
-      toast.error(err.message || 'Failed to create order');
-      throw err;
-    } finally {
-      setIsCreatingOrder(false);
-    }
-  }, []);
-
-  /**
-   * Get order details by ID
-   */
-  const getOrderDetails = useCallback(async (orderId) => {
-    try {
-      const response = await orderService.getOrder(orderId);
-      if (response.success) {
-        setCurrentOrder(response.order);
-        return response.order;
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to fetch order details');
-      throw err;
-    }
-  }, []);
-
-  /**
-   * Reset the checkout state
-   */
-  const resetCheckout = useCallback(() => {
-    setCurrentOrder(null);
-    setOrderError(null);
-  }, []);
-
-  return {
-    isCreatingOrder,
-    orderError,
-    currentOrder,
-    createOrder,
-    getOrderDetails,
-    resetCheckout
-  };
-};
-
-export default useCheckout;
-```
-
-### src/services/api/endpoints.js
-```
-/**
- * API endpoints definitions
- * Centralized location for all API endpoints used in the application
- */
-
-const endpoints = {
-  // Banner endpoints
-  banners: {
-    list: '/banners',
-    get: (id) => `/banners/${id}`,
-  },
-  
-  // Course endpoints
-  courses: {
-    list: '/courses',
-    get: (id) => `/courses/${id}`,
-    getBySlug: (slug) => `/courses/slug/${slug}`,
-  },
-  
-  // Product endpoints
-  products: {
-    list: '/products',
-    get: (id) => `/products/${id}`,
-    getBySlug: (slug) => `/products/${slug}`,
-  },
-  
-  // Cart endpoints
-  cart: {
-    get: '/cart',
-    add: '/cart/add',
-    update: (itemId) => `/cart/item/${itemId}`,
-    remove: (itemId) => `/cart/item/${itemId}`,
-    clear: '/cart',
-  },
-  
-  // Collection endpoints
-  collections: {
-    list: '/collections',
-    get: (id) => `/collections/${id}`,
-    acquire: (id) => `/collections/${id}/acquire`,
-  },
-  
-  // Progress tracking endpoints
-  progress: {
-    startLesson: '/progress/start-lesson',
-    completeLesson: '/progress/complete-lesson',
-    getCourseProgress: (courseId) => `/progress/course/${courseId}`,
-  },
-  
-  // Quiz endpoints
-  quiz: {
-    startAttempt: '/quiz-attempts',
-    submitAnswer: '/quiz-answers',
-    getProgress: (quizId) => `/quizzes/${quizId}/progress`,
-  },
-  
-  // Add more endpoint categories as needed
-  events: {
-    list: '/events',
-    get: (id) => `/events/${id}`,
-  },
-  
-  // Authentication endpoints
-  auth: {
-    login: '/auth/login',
-    register: '/auth/register',
-    logout: '/auth/logout',
-    refreshToken: '/auth/refresh-token',
-    forgotPassword: '/auth/forgot-password',
-    resetPassword: '/auth/reset-password',
-  },
-  
-  // User endpoints
-  user: {
-    profile: '/user/profile',
-    updateProfile: '/user/profile',
-  },
-
-    // Address endpoints (new)
-    addresses: {
-      get: '/addresses',
-      create: '/addresses',
-      update: (addressId) => `/addresses/${addressId}`,
-      delete: (addressId) => `/addresses/${addressId}`,
-      setDefault: (addressId) => `/addresses/${addressId}/default`
-    },
-  
-    // Order endpoints (new)
-    orders: {
-      create: '/orders',
-      get: (orderId) => `/orders/${orderId}`,
-      list: '/orders',
-      cancel: (orderId) => `/orders/${orderId}/cancel`
-    },
-};
-
-export default endpoints;
-```
-
-### src/components/courses/EnrollButton.jsx
-```
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import toast from '../../utils/toastConfig'; // Import the custom toast config
-import AuthModal from '../auth/AuthModal';
-import freeProductService from '../../services/api/freeProductService';
-import paymentService from '../../services/api/paymentService';
-import PaystackPop from '@paystack/inline-js';
-
-/**
- * EnrollButton Component
- * Call-to-action button for course purchase with different states
- * Updated to use React Toastify
+ * Get a list of courses with optional filtering
  * 
- * @param {Object} course - Course object
- * @param {boolean} hasAccess - Whether the user already has access to the course
- * @param {boolean} isAddToCart - Whether this is an "Add to Cart" button
- * @param {Function} onBuyNow - Function to call when buying now
- * @param {Function} onAddToCart - Function to call when adding to cart
+ * @param {Object} params - Filter parameters
+ * @param {string} params.platform - Filter by platform (el, ch, el,ch)
+ * @param {boolean} params.is_online - Filter by online status
+ * @param {string} params.display_page - Type of display
+ * @param {string} params.search - Search term
+ * @param {string} params.sort_by - Sort order
+ * @param {number} params.per_page - Number of results per page
+ * @param {number} params.page - Page number
+ * @returns {Promise} - Promise resolving to course data
  */
-const EnrollButton = ({ 
-  course, 
-  hasAccess = false,
-  isAddToCart = false,
-  onBuyNow,
-  onAddToCart
-}) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const navigate = useNavigate();
-  const { isAuthenticated, checkAuthStatus } = useAuth();
-  
-  // Check if course is free
-  const isFree = () => {
-    if (!course.product_info.price) return false;
-    return parseFloat(course.product_info.price) === 0;
-  };
-  
-  // Handle free course acquisition
-  const acquireFreeProduct = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Call API to acquire free product
-      const response = await freeProductService.acquireFreeProduct(course.product_id);
-      
-      // Show success message
-      toast.success('Course added to your account successfully!');
-      
-      // Redirect to "My Items" page
-      navigate('/my-items');
-      
-      return true;
-    } catch (error) {
-      // Show error message
-      toast.error(error.message || 'Failed to acquire course. Please try again.');
-      
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle Paystack payment initialization
-  const initializePaystackPayment = async (productId) => {
-    try {
-      // Initialize payment with the API
-      const response = await paymentService.initializePayment(productId);
-      
-      // Log the full response for debugging
-      console.log('Payment initialization response:', response);
-      
-      // Check if the response is in the expected format
-      if (response && response.status === 'success' && response.data) {
-        const { access_code, reference } = response.data;
-        
-        // Initialize Paystack popup with callbacks
-        const popup = new PaystackPop();
-        popup.resumeTransaction(access_code, {
-          onLoad: (response) => {
-            // Transaction has loaded
-            console.log('Paystack transaction loaded:', response);
-          },
-          onSuccess: (transaction) => {
-            // Payment completed successfully
-            console.log('Payment successful:', transaction);
-            
-            // Show success message
-            toast.success('Payment completed successfully!');
-            
-            // Verify payment with backend (optional)
-            paymentService.verifyPayment(transaction.reference || reference)
-              .then(verificationResponse => {
-                console.log('Payment verification:', verificationResponse);
-                // Redirect to "My Items" or course page
-                navigate('/my-items');
-              })
-              .catch(error => {
-                console.error('Payment verification failed:', error);
-              });
-          },
-          onCancel: () => {
-            // User cancelled the transaction
-            console.log('Payment cancelled by user');
-            toast.info('Payment was cancelled.');
-          },
-          onError: (error) => {
-            // Error during payment
-            console.error('Paystack error:', error);
-            toast.error(error.message || 'Payment processing failed. Please try again.');
-          },
-          onElementsMount: (elements) => {
-            // Elements (like Apple Pay) mounted
-            if (elements) {
-              console.log('Paystack elements mounted:', elements);
-            }
-          }
-        });
-        
-        // Show loading toast
-        toast.info('Payment initialized. Complete the payment in the popup window.');
-        
-        return true;
-      } else {
-        console.error('Invalid response format:', response);
-        throw new Error('Payment initialization failed - invalid response format');
-      }
-    } catch (error) {
-      console.error('Payment initialization error:', error);
-      toast.error(error.message || 'Payment initialization failed. Please try again.');
-      return false;
-    }
-  };
-  
-  // Handle button click
-  const handleClick = async () => {
-    // If user already has access, navigate to the course content
-    if (hasAccess) {
-      navigate(`/course/${course.product_info.slug}/learn`);
-      return;
-    }
-    
-    // If course is not free, use original functionality
-    if (!isFree()) {
-      // If user is not authenticated, open auth modal
-      if (!isAuthenticated) {
-        setIsAuthModalOpen(true);
-        return;
-      }
-      
-      try {
-        setIsLoading(true);
-        
-        if (isAddToCart) {
-          // Call add to cart callback if provided
-          if (onAddToCart) {
-            await onAddToCart(course);
-          }
-          // Show success message
-          toast.success('Course added to cart successfully!');
-        } else {
-          // Call buy now callback if provided
-          if (onBuyNow) {
-            await onBuyNow(course);
-          }
-          
-          // Initialize Paystack payment instead of redirecting to checkout
-          await initializePaystackPayment(course.product_id);
-        }
-      } catch (error) {
-        toast.error(error.message || 'Action failed. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-      
-      return;
-    }
-    
-    // Free course handling
-    if (!isAuthenticated) {
-      // Open auth modal for login/signup
-      setIsAuthModalOpen(true);
-      return;
-    }
-    
-    // User is authenticated, acquire free product
-    await acquireFreeProduct();
-  };
-  
-  // Handle successful authentication
-  const handleAuthSuccess = async () => {
-    // Verify authentication status
-    const isAuthSuccess = await checkAuthStatus();
-    
-    if (!isAuthSuccess) {
-      toast.error('Authentication failed. Please try again.');
-      return;
-    }
-    
-    // If it's a free course, acquire it
-    if (isFree()) {
-      await acquireFreeProduct();
-    } else if (isAddToCart) {
-      // Add to cart
-      if (onAddToCart) {
-        await onAddToCart(course);
-      }
-      toast.success('Course added to cart successfully!');
-    } else {
-      // Buy now with Paystack
-      if (onBuyNow) {
-        await onBuyNow(course);
-      }
-      
-      // Initialize Paystack payment
-      await initializePaystackPayment(course.product_id);
-    }
-  };
-  
-  // Button text and icon based on button type, course price, and access status
-  const getButtonContent = () => {
-    if (isLoading) {
-      return (
-        <span className="flex items-center justify-center">
-          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Processing...
-        </span>
-      );
-    }
-    
-    if (hasAccess) {
-      return (
-        <span className="flex items-center justify-center">
-          <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-          Go to Course
-        </span>
-      );
-    }
-    
-    if (isAddToCart) {
-      return (
-        <span className="flex items-center justify-center">
-          <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-          Add to Cart
-          <span className="text-xs ml-2 opacity-75">(Continue Shopping)</span>
-        </span>
-      );
-    } else {
-      if (isFree()) {
-        return (
-          <span className="flex items-center justify-center">
-            <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Get for Free
-          </span>
-        );
-      } else {
-        return (
-          <span className="flex items-center justify-center">
-            <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-            Buy Now
-            <span className="text-xs ml-2 opacity-75">(Instant Checkout)</span>
-          </span>
-        );
-      }
-    }
-  };
-  
-  // Don't show "Add to Cart" button if user already has access
-  if (isAddToCart && hasAccess) {
-    return null;
-  }
-  
-  return (
-    <>
-      <button
-        onClick={handleClick}
-        disabled={isLoading}
-        title={isAddToCart ? "Add to cart and continue shopping" : hasAccess ? "Access your course" : "Proceed directly to checkout"}
-        className={`
-          w-full py-3 px-4 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2
-          ${hasAccess 
-            ? 'bg-green-500 hover:bg-green-600 text-white focus:ring-green-500'
-            : isAddToCart
-              ? 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 focus:ring-gray-500'
-              : 'bg-yellow-500 hover:bg-yellow-600 text-gray-900 focus:ring-yellow-500'
-          }
-          ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}
-        `}
-      >
-        {getButtonContent()}
-      </button>
-      
-      {/* Authentication Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onAuthSuccess={handleAuthSuccess}
-        redirectPath="/my-items"
-      />
-    </>
-  );
-};
-
-export default EnrollButton;
-```
-
-### src/services/api/paymentService.js
-```
-import apiClient from './client';
-
-/**
- * Initialize a payment transaction
- * 
- * @param {number|string} productId - The ID of the product to purchase
- * @returns {Promise} - Promise resolving to payment initialization data
- */
-const initializePayment = async (productId) => {
-  try {
-    const endpoint = `/paystack/initialize`;
-    const response = await apiClient.post(endpoint, { product_id: productId });
-    return response;
-  } catch (error) {
-    console.error('Error initializing payment:', error);
-    throw error;
-  }
+const getCourses = (params = {}) => {
+  return apiClient.get(endpoints.courses.list, params);
 };
 
 /**
- * Verify a payment transaction
+ * Get a specific course by ID
  * 
- * @param {string} reference - The transaction reference
- * @returns {Promise} - Promise resolving to payment verification data
+ * @param {number} id - Course ID
+ * @returns {Promise} - Promise resolving to course data
  */
-const verifyPayment = async (reference) => {
-  try {
-    const endpoint = `/paystack/verify/?reference=${reference}`;
-    const response = await apiClient.get(endpoint);
-    return response;
-  } catch (error) {
-    console.error('Error verifying payment:', error);
-    throw error;
-  }
+const getCourseById = (id) => {
+  return apiClient.get(endpoints.courses.get(id));
 };
 
-const paymentService = {
-  initializePayment,
-  verifyPayment
+/**
+ * Get a specific course by slug
+ * 
+ * @param {string} slug - Course slug
+ * @param {boolean} detailed - Whether to include detailed course data
+ * @returns {Promise} - Promise resolving to course data
+ */
+const getCourseBySlug = (slug, detailed = false) => {
+  return apiClient.get(endpoints.courses.getBySlug(slug), { detailed });
 };
 
-export default paymentService;
+/**
+ * Create a new course (protected endpoint)
+ * 
+ * @param {Object} data - Course data
+ * @returns {Promise} - Promise resolving to created course
+ */
+const createCourse = (data) => {
+  return apiClient.post(endpoints.courses.list, data);
+};
+
+/**
+ * Update an existing course (protected endpoint)
+ * 
+ * @param {number} id - Course ID
+ * @param {Object} data - Updated course data
+ * @returns {Promise} - Promise resolving to updated course
+ */
+const updateCourse = (id, data) => {
+  return apiClient.put(endpoints.courses.get(id), data);
+};
+
+/**
+ * Delete a course (protected endpoint)
+ * 
+ * @param {number} id - Course ID
+ * @returns {Promise} - Promise resolving to success message
+ */
+const deleteCourse = (id) => {
+  return apiClient.delete(endpoints.courses.get(id));
+};
+
+const courseService = {
+  getCourses,
+  getCourseById,
+  getCourseBySlug,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+};
+
+export default courseService;
 ```
 

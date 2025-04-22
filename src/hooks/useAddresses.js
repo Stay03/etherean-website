@@ -18,11 +18,14 @@ const useAddresses = () => {
       setIsLoading(true);
       setError(null);
       const response = await addressService.getAddresses();
-      if (response.success) {
+      if (response.success && response.addresses) {
         setAddresses(response.addresses);
+      } else {
+        setAddresses([]);
       }
     } catch (err) {
       setError(err);
+      setAddresses([]);
       toast.error('Failed to load addresses');
     } finally {
       setIsLoading(false);
