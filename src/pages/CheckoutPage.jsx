@@ -63,6 +63,29 @@ const CheckoutPage = () => {
       }
     }
   };
+
+  const handleProceedToPayment = async () => {
+    // Don't create order yet, just navigate to payment page with checkout data
+    if (!selectedShippingAddress) {
+      toast.error('Please select a shipping address');
+      return;
+    }
+    if (!sameAsShipping && !selectedBillingAddress) {
+      toast.error('Please select a billing address');
+      return;
+    }
+    
+    // Store checkout data in session storage to pass to payment page
+    const checkoutData = {
+      shipping_address_id: selectedShippingAddress.id,
+      billing_address_id: sameAsShipping ? selectedShippingAddress.id : selectedBillingAddress.id,
+      shipping_method: hasPhysicalItems ? shippingMethod : null,
+      notes: orderNotes
+    };
+    
+    sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+    navigate('/payment');
+  };
   
   const handleSubmitOrder = async () => {
     try {
@@ -388,27 +411,13 @@ const CheckoutPage = () => {
               
               {((step === 3 && hasPhysicalItems) || (step === 2 && !hasPhysicalItems)) ? (
                 <button
-                  onClick={handleSubmitOrder}
-                  disabled={isCreatingOrder}
-                  className={`inline-flex items-center px-8 py-3 bg-yellow-500 text-gray-900 rounded-xl font-semibold shadow-md hover:shadow-lg transform transition-all duration-200 
-                    ${isCreatingOrder ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-600 hover:-translate-y-0.5'}`}
+                  onClick={handleProceedToPayment}
+                  className="inline-flex items-center px-8 py-3 bg-yellow-500 text-gray-900 rounded-xl font-semibold shadow-md hover:shadow-lg transform transition-all duration-200 hover:bg-yellow-600 hover:-translate-y-0.5"
                 >
-                  {isCreatingOrder ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-900" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Continue to Payment
-                      <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </>
-                  )}
+                  Continue to Payment
+                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               ) : (
                 <button

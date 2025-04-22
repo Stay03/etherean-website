@@ -18,6 +18,26 @@ const initializePayment = async (productId) => {
 };
 
 /**
+ * Initialize payment for an order
+ * Note: Using the same endpoint as product payment with order_id instead
+ * You should verify with your backend team if this is the correct approach
+ * 
+ * @param {number|string} orderId - The ID of the order to pay for
+ * @returns {Promise} - Promise resolving to payment initialization data
+ */
+const initializeOrderPayment = async (orderId) => {
+  try {
+    // TODO: Verify the correct endpoint and payload with backend team
+    const endpoint = `/paystack/initialize-order`;
+    const response = await apiClient.post(endpoint, { order_id: orderId });
+    return response;
+  } catch (error) {
+    console.error('Error initializing order payment:', error);
+    throw error;
+  }
+};
+
+/**
  * Verify a payment transaction
  * 
  * @param {string} reference - The transaction reference
@@ -25,7 +45,7 @@ const initializePayment = async (productId) => {
  */
 const verifyPayment = async (reference) => {
   try {
-    const endpoint = `/paystack/verify/?reference=${reference}`;
+    const endpoint = `/paystack/verify?reference=${reference}`;
     const response = await apiClient.get(endpoint);
     return response;
   } catch (error) {
@@ -36,6 +56,7 @@ const verifyPayment = async (reference) => {
 
 const paymentService = {
   initializePayment,
+  initializeOrderPayment,
   verifyPayment
 };
 

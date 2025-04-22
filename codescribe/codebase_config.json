@@ -4,10 +4,16 @@
     "list_only_extensions": [".png",".jpg",".jpeg",".gif",".ico",".svg",".db",".sqlite",".pdf",".zip"],
     "max_file_size_mb": 5,
     "include_paths": [
+    "src/App.js",
     "src/pages/CheckoutPage.jsx",
-    "src/components/checkout/AddressSelector.jsx",
-    "src/components/checkout/AddressForm.jsx",
-    "src/components/checkout/OrderSummary.jsx",
-    "src/components/checkout/ShippingMethod.jsx"
+    "src/services/api/addressService.js",
+    "src/services/api/orderService.js",
+    "src/hooks/useAddresses.js",
+    "src/hooks/useCheckout.js",
+    "src/contexts/CheckoutContext.jsx",
+    "src/contexts/CartContext.jsx",
+    "src/services/api/endpoints.js",
+    "src/components/courses/EnrollButton.jsx",
+    "src/services/api/paymentService.js"
 ]
 }

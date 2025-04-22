@@ -22,6 +22,9 @@ const MembershipPage = lazy(() => import('./pages/MembershipPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 // Add new CheckoutPage import
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+// Add new PaymentPage import
+const PaymentPage = lazy(() => import('./pages/PaymentPage'));
+const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -70,6 +73,11 @@ const AppContent = () => {
                 <Route path="/cart" element={<CartPage />} />
                 {/* Add new route for checkout page */}
                 <Route path="/checkout" element={<CheckoutPage />} />
+                {/* Add new route for payment page */}
+                <Route path="/payment/:orderId" element={<PaymentPage />} />
+                {/* Add new route for payment page */}
+                <Route path="/payment" element={<PaymentPage />} />
+                <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
