@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import PropTypes from 'prop-types';
 
-// Import images from assets folder
+// Import images as fallbacks
 import libraryImage from '../../assets/library.jpg';
 import empHeaderImage from '../../assets/emp-header.jpg';
 import ppkgImage from '../../assets/ppkg.jpg';
 import neosImage from '../../assets/neos.webp';
 
-// Default featured items data structure
+// Default fallback items in case API fails
 const DEFAULT_FEATURED_ITEMS = [
   {
     id: 'feature1',
@@ -44,8 +44,6 @@ const DEFAULT_FEATURED_ITEMS = [
 ];
 
 // Individual Feature Card component
-// Individual Feature Card component
-// Individual Feature Card component
 const FeatureCard = memo(({ item, index }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -68,6 +66,9 @@ const FeatureCard = memo(({ item, index }) => {
       'bg-gradient-to-br from-blue-500 to-cyan-700',
       'bg-gradient-to-br from-green-600 to-emerald-800'
     ];
+
+    // Default fallback images
+    const fallbackImages = [libraryImage, empHeaderImage, ppkgImage, neosImage];
   
     return (
       <a 
@@ -105,12 +106,18 @@ const FeatureCard = memo(({ item, index }) => {
                 <path d="M0,0 L100,100 M100,0 L0,100" stroke="white" strokeWidth="1" />
               </svg>
             </div>
+            {/* Try fallback image on error */}
+            <img 
+              src={fallbackImages[index % fallbackImages.length]}
+              alt={item.title}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            />
           </div>
         ) : (
           <div className="absolute inset-0 bg-gray-200">
             {/* Image with no overlay */}
             <img 
-              src={item.imageUrl}
+              src={item.imageUrl || fallbackImages[index % fallbackImages.length]}
               alt={item.title}
               className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
               onLoad={handleImageLoad}
@@ -147,17 +154,25 @@ FeatureCard.propTypes = {
 };
 
 // Main Featured Section component
-const FeaturedSection = ({ featuredItems = DEFAULT_FEATURED_ITEMS }) => {
-  const [isLoading, setIsLoading] = useState(true);
+const FeaturedSection = ({ 
+  featuredItems = [], 
+  isLoading: externalLoading = false, 
+  error: externalError = null 
+}) => {
+  const [internalLoading, setInternalLoading] = useState(true);
 
   // Simulate loading state for smoother transition
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setInternalLoading(false);
     }, 800);
     
     return () => clearTimeout(timer);
   }, []);
+
+  // Determine what items to display
+  const displayItems = featuredItems.length > 0 ? featuredItems : DEFAULT_FEATURED_ITEMS;
+  const isActuallyLoading = externalLoading || internalLoading;
 
   return (
     <section className="w-full bg-white py-16 px-4 relative overflow-hidden">
@@ -173,15 +188,20 @@ const FeaturedSection = ({ featuredItems = DEFAULT_FEATURED_ITEMS }) => {
           {/* Modified flex container to stack on mobile */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 md:gap-0">
             <p className="text-[24px] md:text-[34px] lg:text-[44px] font-semibold leading-[30px] md:leading-[40px] tracking-[-0.96px] text-[#292929] max-w-4xl">
-              Featured
+              {featuredItems.length > 0 ? 'Free Courses' : 'Featured'}
             </p>
-            
-            
           </div>
         </div>
         
+        {/* Error state */}
+        {externalError && !isActuallyLoading && (
+          <div className="text-red-500 mb-4 p-4 bg-red-50 rounded-lg">
+            Unable to load free courses. Showing featured items instead.
+          </div>
+        )}
+        
         {/* Loading state */}
-        {isLoading ? (
+        {isActuallyLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="rounded-2xl overflow-hidden shadow-lg bg-gray-200 h-80 animate-pulse">
@@ -200,7 +220,7 @@ const FeaturedSection = ({ featuredItems = DEFAULT_FEATURED_ITEMS }) => {
         ) : (
           /* Featured items grid */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            {featuredItems.map((item, index) => (
+            {displayItems.map((item, index) => (
               <FeatureCard 
                 key={item.id} 
                 item={item} 
@@ -224,7 +244,9 @@ FeaturedSection.propTypes = {
       linkUrl: PropTypes.string.isRequired,
       category: PropTypes.string.isRequired
     })
-  )
+  ),
+  isLoading: PropTypes.bool,
+  error: PropTypes.object
 };
 
 export default memo(FeaturedSection);

@@ -6,6 +6,7 @@ import RecentStreams from '../components/home/RecentStreams';
 import FeaturedSection from '../components/home/FeaturedSection';
 import VisitUsSection from '../components/home/VisitUsSection';
 import useBanners from '../hooks/useBanner';
+import useFreeCourses from '../hooks/useFreeCourses';
 
 /**
  * HomePage Component
@@ -25,6 +26,13 @@ const HomePage = () => {
     orderBy: 'display_order',
     orderDir: 'asc'
   });
+
+  // Fetch free courses for featured section using custom hook
+  const {
+    courses: freeCourses,
+    isLoading: courseLoading,
+    error: courseError
+  } = useFreeCourses({ limit: 4 });
 
   return (
     <div className="w-full">
@@ -57,7 +65,13 @@ const HomePage = () => {
 
       {/* Other sections */}
       <MarqueeSlider />
-      <FeaturedSection />
+      
+      {/* Pass the free courses to FeaturedSection */}
+      <FeaturedSection 
+        featuredItems={freeCourses} 
+        isLoading={courseLoading}
+        error={courseError}
+      />
       
       {/* EventsSlider now uses the API endpoint */}
       <EventsSlider />

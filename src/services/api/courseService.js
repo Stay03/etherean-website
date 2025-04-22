@@ -17,6 +17,7 @@ import endpoints from './endpoints';
  * @param {string} params.sort_by - Sort order
  * @param {number} params.per_page - Number of results per page
  * @param {number} params.page - Page number
+ * @param {number} params.price - Filter by price (0 for free courses)
  * @returns {Promise} - Promise resolving to course data
  */
 const getCourses = (params = {}) => {
@@ -42,6 +43,27 @@ const getCourseById = (id) => {
  */
 const getCourseBySlug = (slug, detailed = false) => {
   return apiClient.get(endpoints.courses.getBySlug(slug), { detailed });
+};
+
+/**
+ * Get free courses (price = 0)
+ * 
+ * @param {Object} params - Additional filter parameters
+ * @param {number} params.limit - Number of courses to fetch (default: 4)
+ * @returns {Promise} - Promise resolving to free courses
+ */
+const getFreeCourses = (params = {}) => {
+  const defaultParams = {
+    price: 0,
+    per_page: params.limit || 4,
+    page: 1,
+    is_online: true,
+    visibility: 1,
+    platform: 'el',
+    sort_by: 'created_at'
+  };
+  
+  return apiClient.get(endpoints.courses.list, { ...defaultParams, ...params });
 };
 
 /**
@@ -79,6 +101,7 @@ const courseService = {
   getCourses,
   getCourseById,
   getCourseBySlug,
+  getFreeCourses, // New method for free courses
   createCourse,
   updateCourse,
   deleteCourse,
