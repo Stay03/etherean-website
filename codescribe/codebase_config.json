@@ -4,14 +4,10 @@
     "list_only_extensions": [".png",".jpg",".jpeg",".gif",".ico",".svg",".db",".sqlite",".pdf",".zip"],
     "max_file_size_mb": 5,
     "include_paths": [
-
-        "src/components/auth/AuthModal.jsx",
-        "src/contexts/AuthContext.jsx",
-        "src/services/api/client.js",
-        "src/services/api/endpoints.js",
-        "src/services/api/courseService.js",
-        "src/hooks/useCourses.js",
-        "src/pages/CoursesPage.jsx",
-        "src/App.js"
-    ]
+    "src/pages/CheckoutPage.jsx",
+    "src/components/checkout/AddressSelector.jsx",
+    "src/components/checkout/AddressForm.jsx",
+    "src/components/checkout/OrderSummary.jsx",
+    "src/components/checkout/ShippingMethod.jsx"
+]
 }

@@ -4,6 +4,7 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { CheckoutProvider } from './contexts/CheckoutContext';
 import ScrollToTop from './components/ScrollToTop';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -19,6 +20,8 @@ const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const MembershipPage = lazy(() => import('./pages/MembershipPage'));
 // Add new CartPage import
 const CartPage = lazy(() => import('./pages/CartPage'));
+// Add new CheckoutPage import
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -64,6 +67,8 @@ const AppContent = () => {
                 <Route path="/membership" element={<MembershipPage />} />
                 {/* Add new route for cart page */}
                 <Route path="/cart" element={<CartPage />} />
+                {/* Add new route for checkout page */}
+                <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
@@ -95,10 +100,12 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <Router>
-          <ScrollToTop />
-          <AppContent />
-        </Router>
+        <CheckoutProvider>
+          <Router>
+            <ScrollToTop />
+            <AppContent />
+          </Router>
+        </CheckoutProvider>
       </CartProvider>
     </AuthProvider>
   );

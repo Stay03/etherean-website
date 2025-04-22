@@ -75,6 +75,23 @@ const endpoints = {
     profile: '/user/profile',
     updateProfile: '/user/profile',
   },
+
+    // Address endpoints (new)
+    addresses: {
+      get: '/addresses',
+      create: '/addresses',
+      update: (addressId) => `/addresses/${addressId}`,
+      delete: (addressId) => `/addresses/${addressId}`,
+      setDefault: (addressId) => `/addresses/${addressId}/default`
+    },
+  
+    // Order endpoints (new)
+    orders: {
+      create: '/orders',
+      get: (orderId) => `/orders/${orderId}`,
+      list: '/orders',
+      cancel: (orderId) => `/orders/${orderId}/cancel`
+    },
 };
 
 export default endpoints;
