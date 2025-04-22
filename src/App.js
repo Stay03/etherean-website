@@ -36,6 +36,7 @@ const AppContent = () => {
   
   // Check if the current path is the learning page
   const isLearningPage = location.pathname.includes('/course/') && location.pathname.includes('/learn');
+  const isCheckoutPage = location.pathname.includes('/checkout');
   
   return (
     <>
@@ -77,7 +78,7 @@ const AppContent = () => {
       </div>
       
       {/* Conditionally render footer only when NOT on learning page */}
-      {!isLearningPage && <Footer />}
+      {!isLearningPage && !isCheckoutPage && <Footer />}
       
       {/* Add ToastContainer for react-toastify */}
       <ToastContainer 
