@@ -5,13 +5,18 @@
     "max_file_size_mb": 5,
     "include_paths": [
     "src/App.js",
-    "src/services/api/endpoints.js",
-    "src/services/api/client.js",
-    "src/pages/HomePage.jsx",
+    "src/services/api/courseService.js",
+    "src/services/api/productService.js",
+    "src/pages/CoursesPage.jsx",
+    "src/pages/EventsPage.jsx",
+    "src/pages/ShopPage.jsx",
     "src/hooks/useEvents.js",
-    "src/hooks/useEventSlider.js",
-    "src/components/home/EventsSlider.jsx",
-    "src/components/home/EventsSlider/EventCard.jsx"
+    "src/hooks/useCourses.js",
+    "src/hooks/useProducts.js",
+    "src/components/layout/Header/components/DesktopMenu.jsx",
+    "src/components/layout/Header/components/MobileMenu.jsx",
+    "src/components/layout/Header/index.jsx"
+
 
 ]
 }

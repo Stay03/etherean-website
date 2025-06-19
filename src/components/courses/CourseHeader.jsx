@@ -30,7 +30,8 @@ const CourseHeader = ({ course, hasAccess = false }) => {
     // Check for free courses
     if (numPrice === 0) return 'Free';
     
-    return `${numPrice.toFixed(2)}`;
+    // For paid courses, return just the number formatted with 2 decimal places
+    return numPrice.toFixed(2);
   };
   
   // Generate platform badge classes
@@ -43,9 +44,9 @@ const CourseHeader = ({ course, hasAccess = false }) => {
       let bgColor = 'bg-gray-100';
       let textColor = 'text-gray-800';
       
-      if (p === 'EL') {
-        bgColor = 'bg-blue-100';
-        textColor = 'text-blue-800';
+      if (p === 'CH') {
+        bgColor = 'bg-indigo-100';
+        textColor = 'text-indigo-800';
       } else if (p === 'CH') {
         bgColor = 'bg-green-100';
         textColor = 'text-green-800';
@@ -64,6 +65,12 @@ const CourseHeader = ({ course, hasAccess = false }) => {
   const goToCourse = () => {
     navigate(`/course/${course.product_info.slug}/learn`);
   };
+
+  // Check if course is free
+  const isFree = parseFloat(course.product_info.price) === 0;
+  
+  // Get formatted price display
+  const priceDisplay = formatPrice(course.product_info.price);
 
   return (
     <div className="bg-gray-50 py-8 border-b">
@@ -100,17 +107,7 @@ const CourseHeader = ({ course, hasAccess = false }) => {
           
           {/* Course Info */}
           <div className="w-full md:w-1/2 lg:w-3/5">
-            {/* Platform Badges */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {platformBadges.map((badge, index) => (
-                <span 
-                  key={index}
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${badge.className}`}
-                >
-                  {badge.name}
-                </span>
-              ))}
-            </div>
+         
             
             {/* Course Title */}
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
@@ -120,8 +117,8 @@ const CourseHeader = ({ course, hasAccess = false }) => {
             {/* Price */}
             <div className="mb-6">
               {!hasAccess ? (
-                <span className="text-2xl font-bold text-yellow-600">
-                  {formatPrice(course.product_info.price)}
+                <span className="text-2xl font-bold text-green-600">
+                  {priceDisplay === 'Free' ? priceDisplay : `$${priceDisplay}`}
                 </span>
               ) : (
                 <span className="text-lg font-medium text-green-600">
@@ -145,16 +142,7 @@ const CourseHeader = ({ course, hasAccess = false }) => {
                 />
               </div>
               
-              {!hasAccess && parseFloat(course.product_info.price) > 0 && (
-                <div className="w-full sm:w-auto">
-                  <EnrollButton 
-                    course={course}
-                    hasAccess={hasAccess}
-                    isAddToCart={true}
-                    onAddToCart={(course) => console.log('Add to cart:', course)}
-                  />
-                </div>
-              )}
+       
             </div>
           </div>
         </div>

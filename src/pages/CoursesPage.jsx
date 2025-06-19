@@ -20,10 +20,11 @@ const CoursesPage = () => {
     platform: queryParams.get('platform') || 'el',
     is_online: queryParams.get('is_online') !== 'false',
     visibility : queryParams.get('visibility') || '1',
-    sort_by: queryParams.get('sort_by') || 'newest',
+    sort_by: queryParams.get('sort_by') || 'price-desc',
     search: queryParams.get('search') || '',
     page: parseInt(queryParams.get('page') || '1', 10),
     per_page: parseInt(queryParams.get('per_page') || '12', 10),
+    price : "> 1",
     display_page: 'home'
   };
 
@@ -109,7 +110,7 @@ const CoursesPage = () => {
       </div>
       
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[90rem] mx-auto  py-8">
         <CourseList 
           courses={courses} 
           isLoading={isLoading} 

@@ -252,7 +252,7 @@ const RecentStreams = ({ initialVideos = [] }) => {
             
             {/* View All button that wraps to next line on mobile */}
             <a 
-              href="https://www.youtube.com/@EthereanLife" 
+              href="https://www.youtube.com/@EthereanMissionInternational" 
               target="_blank" 
               rel="noopener noreferrer"
               className="inline-flex items-center px-8 py-3 text-lg font-semibold rounded-full bg-yellow-500 text-gray-800 hover:bg-[#292929] hover:text-white transition-all duration-500 ease-in-out self-start"

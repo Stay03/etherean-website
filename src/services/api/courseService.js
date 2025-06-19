@@ -60,7 +60,7 @@ const getFreeCourses = (params = {}) => {
     is_online: true,
     visibility: 1,
     platform: 'el',
-    sort_by: 'created_at'
+    sort_by: 'oldest'
   };
   
   return apiClient.get(endpoints.courses.list, { ...defaultParams, ...params });

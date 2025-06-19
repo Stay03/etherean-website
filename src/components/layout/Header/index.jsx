@@ -1,5 +1,5 @@
 import React, { memo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useScrollPosition from '../../../hooks/useScrollPosition';
 import useMenuState from '../../../hooks/useMenuState';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -15,6 +15,7 @@ import AuthModal from '../../auth/AuthModal';
 const Header = () => {
   // Use authentication context instead of hardcoded value
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   
   // State for auth modal
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -45,6 +46,14 @@ const Header = () => {
     closeMobileMenu();
   };
 
+  // Handler for search button click
+  const handleSearchClick = () => {
+    navigate('/search');
+    if (mobileMenuOpen) {
+      closeMobileMenu();
+    }
+  };
+
   // Dynamic classes for the header based on scroll state
   const headerClasses = `w-full z-20 transition-all duration-300 ${
     isScrolled 
@@ -59,6 +68,7 @@ const Header = () => {
         isScrolled={isScrolled}
         isLoggedIn={isAuthenticated}
         onLoginClick={() => handleOpenAuthModal('login')}
+        onSearchClick={handleSearchClick}
       />
 
       {/* Mobile/Tablet Header */}
@@ -67,8 +77,9 @@ const Header = () => {
         
         <div className="flex items-center z-10">
           <button 
-            className={`p-2 mr-2 ${isScrolled ? 'text-yellow-500' : 'text-yellow-500'}`}
+            className={`p-2 mr-2 ${isScrolled || !mobileMenuOpen ? 'text-yellow-500' : 'text-white'}`} // Adjust color if menu is open and not scrolled
             aria-label="Search"
+            onClick={handleSearchClick}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -103,6 +114,8 @@ const Header = () => {
         onToggleExpand={toggleExpand}
         onMenuItemClick={handleMobileMenuItemClick}
         onLoginClick={() => handleOpenAuthModal('login')}
+        // onSearchClick prop is not used by MobileMenu component itself for a search icon inside it
+        // The main mobile search icon is handled above.
       />
 
       {/* Auth Modal */}

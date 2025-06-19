@@ -73,7 +73,7 @@ const MembershipList = ({
         <MembershipCard
           key={collection.id}
           collection={collection}
-          imageUrl={membershipImages[collection.id]}
+          imageUrl={collection.image}
           onSelect={onSelect}
           onAuthRequired={onAuthRequired}
         />

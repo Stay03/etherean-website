@@ -17,7 +17,7 @@ const CourseList = ({ courses, isLoading, error, pagination, onPageChange, onRet
   if (isLoading && (!courses || courses.length === 0)) {
     return (
       <div className="w-full">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="bg-white rounded-lg overflow-hidden shadow-md">
               <div className="w-full h-48 bg-gray-200 animate-pulse"></div>
@@ -87,7 +87,7 @@ const CourseList = ({ courses, isLoading, error, pagination, onPageChange, onRet
   return (
     <div className="w-full">
       {/* Courses Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
         {courses.map(course => (
           <CourseCard key={course.id} course={course} />
         ))}

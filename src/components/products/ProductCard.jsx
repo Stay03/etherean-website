@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 
 /**
- * ProductCard Component
- * Displays information about a single product in a card format
+ * Modern ProductCard Component
+ * Displays information about a single product in a modern, immersive card format
+ * Title is now positioned at the bottom with the price
  */
 const ProductCard = ({ product, onAddToCart }) => {
+  const navigate = useNavigate();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   
   const {
     id,
@@ -15,8 +18,6 @@ const ProductCard = ({ product, onAddToCart }) => {
     slug,
     thumbnail,
     price,
-    type,
-    is_online
   } = product;
 
   // Helper to format price properly
@@ -30,74 +31,77 @@ const ProductCard = ({ product, onAddToCart }) => {
   const handleAddToCartClick = async () => {
     setIsAddingToCart(true);
     try {
-      const response = await onAddToCart({ product_id: id, quantity: 1 });
-      
-      // Check if this is a special "auth_required" response
-      // If so, we don't need to do anything special here
-      // The finally block will handle resetting the loading state
+      await onAddToCart({ product_id: id, quantity: 1 });
     } catch (error) {
       console.error('Error adding to cart:', error);
     } finally {
-      // Always reset loading state after the operation
       setIsAddingToCart(false);
     }
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1">
-      {/* Product Image */}
-      <Link to={`/product/${slug}`}>
-        <div className="relative h-48 overflow-hidden">
-          <img 
-            src={thumbnail} 
-            alt={title}
-            className="w-full h-full object-cover"
-          />
-          {/* Product Type Badge */}
-          <div className="absolute top-2 right-2">
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-              type === 'physical' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-            }`}>
-              {type === 'physical' ? 'Physical' : 'Digital'}
-            </span>
-          </div>
-          {/* Stock/Availability Badge */}
-          <div className="absolute top-2 left-2">
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-              is_online ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {is_online ? 'In Stock' : 'Pre-order'}
-            </span>
-          </div>
-        </div>
-      </Link>
+  // Handle product click - navigate to product detail page
+  const handleProductClick = () => {
+    navigate(`/product/${slug}`);
+  };
 
-      {/* Product Info */}
-      <div className="p-4">
-        <Link to={`/product/${slug}`}>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-yellow-600 transition-colors">{title}</h3>
-        </Link>
+  return (
+    <div 
+      className="relative rounded-lg overflow-hidden shadow-lg transition-all duration-300 h-[30rem] group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Full-covering product image */}
+      <div className="absolute inset-0 w-full h-full">
+        <img 
+          src={thumbnail} 
+          alt={title}
+          className="w-full h-full object-cover transition-transform duration-500"
+          style={{
+            transform: isHovered ? 'scale(1.05)' : 'scale(1)'
+          }}
+        />
         
-        <div className="flex justify-between items-center mt-4">
-          <span className="text-lg font-bold text-gray-900">{formatPrice(price)}</span>
+        {/* Gradient overlay that's always present but stronger at bottom */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-100" />
+      </div>
+      
+      {/* Content container */}
+      <div className="absolute inset-0 flex flex-col justify-end p-4">
+        {/* Now both title and price are at the bottom */}
+        <div className="w-full mt-auto">
+          {/* Title - now moved to bottom */}
+          <div 
+            onClick={handleProductClick} 
+            className="cursor-pointer mb-2"
+          >
+            <h3 className="text-lg font-bold text-white drop-shadow-md line-clamp-2 transition-colors">
+              {title}
+            </h3>
+          </div>
+          
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-md font-bold text-white drop-shadow-md">
+              {formatPrice(price)}
+            </span>
+          </div>
           
           <button
             onClick={handleAddToCartClick}
             disabled={isAddingToCart}
-            className={`px-3 py-2 rounded-full text-sm font-medium transition-colors flex items-center justify-center min-w-[100px] ${
+            className={`w-full py-3 rounded-lg font-medium text-center transition-all duration-300 ${
               isAddingToCart 
                 ? 'bg-gray-300 text-gray-700 cursor-not-allowed' 
-                : 'bg-yellow-500 text-gray-900 hover:bg-gray-900 hover:text-white'
+                : 'bg-yellow-500 text-gray-900 hover:bg-yellow-600'
             }`}
           >
             {isAddingToCart ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <div className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Adding...
-              </>
+                Adding to Cart...
+              </div>
             ) : (
               'Add to Cart'
             )}
@@ -115,8 +119,6 @@ ProductCard.propTypes = {
     slug: PropTypes.string.isRequired,
     thumbnail: PropTypes.string.isRequired,
     price: PropTypes.string.isRequired,
-    type: PropTypes.string.isRequired,
-    is_online: PropTypes.oneOfType([PropTypes.number, PropTypes.bool]).isRequired
   }).isRequired,
   onAddToCart: PropTypes.func.isRequired
 };

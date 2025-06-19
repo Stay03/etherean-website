@@ -5,6 +5,7 @@ import CourseDescription from '../components/courses/CourseDescription';
 import CourseSections from '../components/courses/CourseSections';
 import CourseInfoTabs from '../components/courses/CourseInfoTabs';
 import EnrollButton from '../components/courses/EnrollButton';
+import ShareButton from '../components/courses/ShareButton';
 import useCourseDetail from '../hooks/useCourseDetail';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,6 +17,9 @@ const CourseDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  
+  // Get the current URL for sharing
+  const currentUrl = window.location.href;
   
   // Fetch course details using custom hook
   const { 
@@ -109,17 +113,17 @@ const CourseDetailPage = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 max-w-2xl mx-auto">
-            <svg className="h-12 w-12 text-yellow-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-8 max-w-2xl mx-auto">
+            <svg className="h-12 w-12 text-green-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <h3 className="text-lg font-medium text-yellow-800 mb-2">Course Not Found</h3>
-            <p className="text-yellow-700 mb-4">
+            <h3 className="text-lg font-medium text-green-800 mb-2">Course Not Found</h3>
+            <p className="text-green-700 mb-4">
               The course you're looking for doesn't exist or has been removed.
             </p>
             <button
               onClick={() => navigate('/courses')}
-              className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
             >
               Browse All Courses
             </button>
@@ -153,11 +157,6 @@ const CourseDetailPage = () => {
               
               {/* Course Details */}
               <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Platform</span>
-                  <span className="text-gray-900 font-medium">{course.product_info.platform}</span>
-                </div>
-                
                 <div className="flex justify-between">
                   <span className="text-gray-600">Sections</span>
                   <span className="text-gray-900 font-medium">{course.sections?.length || 0}</span>
@@ -195,23 +194,24 @@ const CourseDetailPage = () => {
                   onBuyNow={(course) => console.log('Buy now:', course)}
                 />
                 
+                {/* Share Button */}
+                <div className="mt-3">
+                  <ShareButton 
+                    course={course} 
+                    currentUrl={currentUrl}
+                  />
+                </div>
+                
                 {!hasAccess && parseFloat(course.product_info.price) > 0 && (
                   <>
-                    <EnrollButton 
-                      course={course}
-                      hasAccess={hasAccess}
-                      isAddToCart={true}
-                      onAddToCart={(course) => console.log('Add to cart:', course)}
-                    />
-                    
-                    {/* Helper text to explain button differences */}
-                    <div className="mt-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-md">
-                      <p className="text-xs text-blue-800 flex items-start">
-                        <svg className="h-4 w-4 mr-1 flex-shrink-0 mt-0.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {/* Helper text to explain buy now */}
+                    <div className="mt-3 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-md">
+                      <p className="text-xs text-indigo-800 flex items-start">
+                        <svg className="h-4 w-4 mr-1 flex-shrink-0 mt-0.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>
-                          <strong>Buy Now</strong> proceeds directly to checkout, while <strong>Add to Cart</strong> allows you to continue shopping and checkout later.
+                           <strong> Pay for course</strong> will proceed to payment and enroll you in the course.
                         </span>
                       </p>
                     </div>
