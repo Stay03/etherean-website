@@ -35,6 +35,7 @@ const FreeCoursesPage = lazy(() => import('./pages/FreeCoursesPage'));
 const BlankPage = lazy(() => import('./pages/BlankPage'));
 const WhyJesusPage = lazy(() => import('./pages/WhyJesusCameOnEarth'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
+const CommunityPage = lazy(() => import('./pages/CommunityPage'));
 
 
 // Loading fallback component
@@ -101,6 +102,7 @@ const AppContent = () => {
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/free-courses" element={<FreeCoursesPage />} />
                 <Route path="/why-jesus" element={<WhyJesusPage />} />
+                <Route path="/community" element={<CommunityPage />} />
                 <Route path="/ministries/youth" element={<BlankPage />} />
                 <Route path="/ministries/healthy" element={<BlankPage />} />
                 <Route path="/ministries/inner-circle" element={<BlankPage />} />

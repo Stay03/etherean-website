@@ -3,8 +3,8 @@
  * Centralizes request configuration and error handling
  */
 
-const API_BASE_URL = 'http://localhost:8000/api';
-// const API_BASE_URL = 'https://apimagic.website/ethereanAPI/api';
+// const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'https://apimagic.website/ethereanAPI/api';
 
 /**
  * Creates and returns API request options with proper headers

@@ -21,7 +21,7 @@ const Footer = () => {
           
           <div>
             <Link 
-              to="/membership" 
+              to="/community" 
               className="inline-block bg-yellow-500 hover:bg-yellow-600 text-[#292929] font-semibold py-3 px-6 rounded-full transition-colors duration-300 text-lg"
             >
               Join Our Community
@@ -41,6 +41,9 @@ const Footer = () => {
           <div className="flex flex-wrap gap-x-8 gap-y-3">
             <Link to="/contact" className="text-gray-400 hover:text-white transition-colors duration-300 text-lg">
               Contact
+            </Link>
+            <Link to="/community" className="text-gray-400 hover:text-white transition-colors duration-300 text-lg">
+              Community
             </Link>
             <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors duration-300 text-lg">
               Privacy Policy
