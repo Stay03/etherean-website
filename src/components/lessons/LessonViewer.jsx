@@ -769,7 +769,7 @@ const LessonViewer = ({
             )}
             
             {/* Add padding at the bottom to prevent content from being hidden behind fixed elements */}
-            <div className="pb-36"></div>
+            <div className="pb-40"></div>
           </div>
         </div>
       )}

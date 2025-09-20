@@ -448,6 +448,8 @@ const CourseLearnPage = () => {
           </div>
         </div>
       </div>
+      {/* Add padding to prevent content from being hidden behind fixed elements */}
+      <div className="pb-20"></div>
     </div>
   );
 };

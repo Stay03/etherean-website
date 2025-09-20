@@ -398,7 +398,7 @@ const SectionQuizViewer = ({
           )}
           
           {/* Add padding at the bottom */}
-          <div className="pb-20"></div>
+          <div className="pb-32"></div>
         </div>
       </div>
     </motion.div>
