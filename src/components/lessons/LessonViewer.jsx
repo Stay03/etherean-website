@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, 
          Play, FileText, ArrowLeft, ArrowRight, Award, Clock, AlertTriangle } from 'lucide-react';
@@ -30,7 +30,9 @@ const LessonViewer = ({
   onNavigate,
   availableLessons = [],
   progressionEnabled = false,
-  onLessonComplete = () => {}
+  nextLesson,
+  onLessonComplete = () => {},
+  onQuizComplete = () => {}
 }) => {
   const [activeTab, setActiveTab] = useState('content');
   const [expanded, setExpanded] = useState(false);
@@ -189,12 +191,96 @@ const LessonViewer = ({
   };
 
   // Custom navigation handler to show loading state
-  const handleNavigate = (targetLesson, targetSection) => {
+  const handleNavigate = (targetLesson, targetSection, targetQuiz = null) => {
     setIsNavigating(true);
     
     // Call the parent navigation handler
-    onNavigate(targetLesson, targetSection);
+    onNavigate(targetLesson, targetSection, targetQuiz);
   };
+  
+  // Check if a lesson is available (for progression)
+  const isLessonAvailable = (lessonId) => {
+    if (!progressionEnabled) return true;
+    return availableLessons.some(lesson => lesson.id === lessonId);
+  };
+  
+  // Find next and previous lessons
+  const getAdjacentLessons = () => {
+    // Create a combined list of lessons and section quizzes
+    const allItems = [];
+    course.sections.forEach(section => {
+      // Add lessons
+      (section.lessons || []).forEach(lesson => {
+        allItems.push({
+          ...lesson,
+          sectionId: section.id,
+          section: section,
+          type: 'lesson'
+        });
+      });
+      
+      // Add section quizzes if they exist
+      (section.quizzes || []).forEach(quiz => {
+        allItems.push({
+          ...quiz,
+          sectionId: section.id,
+          section: section,
+          type: 'section_quiz',
+          isQuiz: true
+        });
+      });
+    });
+    
+    const currentIndex = allItems.findIndex(item => item.id === lesson.id && item.type === 'lesson');
+    
+    // Find actual next/previous items regardless of progression status
+    const actualPrevItem = currentIndex > 0 ? allItems[currentIndex - 1] : null;
+    const actualNextItem = currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
+    
+    // Find progression-aware next/previous items
+    let prevItem = actualPrevItem;
+    let nextItem = actualNextItem;
+    
+    if (progressionEnabled) {
+      if (prevItem && prevItem.type === 'lesson' && !isLessonAvailable(prevItem.id)) {
+        prevItem = null;
+      }
+      
+      if (nextItem && nextItem.type === 'lesson' && !isLessonAvailable(nextItem.id)) {
+        nextItem = null;
+      }
+      
+      // For quizzes, we need to check if the section is available
+      if (nextItem && nextItem.type === 'section_quiz') {
+        // Check if the section containing this quiz is available
+        const sectionAvailable = availableLessons.some(l => l.sectionId === nextItem.sectionId);
+        if (!sectionAvailable) {
+          nextItem = null;
+        }
+      }
+    }
+    
+    // Separate lessons from other items for backward compatibility
+    const actualPrevLesson = actualPrevItem && actualPrevItem.type === 'lesson' ? actualPrevItem : null;
+    const actualNextLesson = actualNextItem && actualNextItem.type === 'lesson' ? actualNextItem : null;
+    const prevLesson = prevItem && prevItem.type === 'lesson' ? prevItem : null;
+    const nextLesson = nextItem && nextItem.type === 'lesson' ? nextItem : null;
+    
+    return { 
+      prev: prevLesson, 
+      next: nextLesson,
+      actualPrev: actualPrevLesson,
+      actualNext: actualNextLesson,
+      isLastLesson: currentIndex === allItems.length - 1 || 
+        (currentIndex === allItems.length - 2 && allItems[allItems.length - 1]?.type === 'section_quiz')
+    }
+  };
+  
+  const { prev, next: adjacentNext, actualNext, isLastLesson } = getAdjacentLessons();
+  
+  // Use the nextLesson from props if available, otherwise use the adjacent next
+  // Make sure to recalculate this when nextLesson changes
+  const nextItem = useMemo(() => nextLesson || adjacentNext, [nextLesson, adjacentNext]);
   
   if (!lesson || !section || !course) {
     return (
@@ -221,42 +307,6 @@ const LessonViewer = ({
     );
   }
 
-  // Check if a lesson is available (for progression)
-  const isLessonAvailable = (lessonId) => {
-    if (!progressionEnabled) return true;
-    return availableLessons.some(lesson => lesson.id === lessonId);
-  };
-  
-  // Find next and previous lessons
-  const getAdjacentLessons = () => {
-    const allLessons = course.sections.flatMap(s => 
-      (s.lessons || []).map(l => ({
-        ...l,
-        sectionId: s.id,
-        section: s
-      }))
-    );
-    
-    const currentIndex = allLessons.findIndex(l => l.id === lesson.id);
-    
-    let prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
-    let nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
-    
-    if (progressionEnabled) {
-      if (prevLesson && !isLessonAvailable(prevLesson.id)) {
-        prevLesson = null;
-      }
-      
-      if (nextLesson && !isLessonAvailable(nextLesson.id)) {
-        nextLesson = null;
-      }
-    }
-    
-    return { prev: prevLesson, next: nextLesson };
-  };
-  
-  const { prev, next } = getAdjacentLessons();
-  
   // Handle completing the lesson
   const handleCompleteLesson = async () => {
     if (isCompleting || lesson.complete) return;
@@ -279,9 +329,9 @@ const LessonViewer = ({
           enterQuizMode(lesson.quizzes[0]);
         }, 1000);
       } else {
-        if (next) {
+        if (nextItem) {
           setTimeout(() => {
-            handleNavigate(next, next.section);
+            handleNavigate(nextItem, nextItem.section);
           }, 1500);
         }
       }
@@ -298,6 +348,9 @@ const LessonViewer = ({
     // Show confetti animation
     setShowConfetti(true);
     
+    // Call the onQuizComplete callback to refresh course data
+    onQuizComplete(lesson.id);
+    
     // We no longer need to navigate away immediately since
     // the QuizManager now shows the results view automatically
     
@@ -305,14 +358,14 @@ const LessonViewer = ({
       setShowConfetti(false);
       
       // After confetti animation, if there's a next lesson we can offer to navigate to it
-      if (next) {
+      if (nextItem) {
         // Instead of automatically navigating, we could show a prompt or button
         // Or we can keep the automatic navigation with a longer delay
         // since the user now has time to view the results first
         
         // Option 1: Longer delay before auto-navigation
         setTimeout(() => {
-          handleNavigate(next, next.section);
+          handleNavigate(nextItem, nextItem.section);
         }, 5000);  // Give user 5 seconds to see results before navigating
         
         // Option 2: Or remove auto-navigation and let user choose when to continue
@@ -515,11 +568,11 @@ const LessonViewer = ({
                 </motion.button>
             )}
             
-            {next && (
+            {nextItem && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => handleNavigate(next, next.section)}
+                  onClick={() => handleNavigate(nextItem, nextItem.section)}
                   className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
                   disabled={isNavigating}
                 >
@@ -660,7 +713,7 @@ const LessonViewer = ({
                   Lesson Content
                 </h3>
                 <div 
-                  className="prose prose-amber max-w-none prose-headings:text-amber-900 prose-a:text-amber-600 prose-strong:text-amber-700"
+                  className="prose prose-amber max-w-none prose-headings:text-amber-900 prose-a:text-amber-600 prose-strong:text-amber-700 prose-table:table-auto prose-thead:border-amber-500 prose-th:border-amber-300 prose-td:border-gray-200"
                   dangerouslySetInnerHTML={{ __html: lesson.content }}
                 />
               </motion.div>
@@ -917,17 +970,84 @@ const LessonViewer = ({
                   Take Quiz
                   <FileText className="ml-2 -mr-1 h-5 w-5" />
                 </motion.button>
-              ) : next ? (
+              ) : nextItem ? (
+                // Check if next item is a quiz
+                nextItem.isQuiz ? (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      // Navigate to the section quiz
+                      if (onNavigate && nextItem.section) {
+                        // We need to call the parent's onNavigate with the quiz info
+                        // But onNavigate expects a lesson, so we'll need to handle this differently
+                        // Let's use a custom function to navigate to quizzes
+                        if (typeof onNavigate === 'function') {
+                          // Pass the quiz and section to the parent component
+                          // The parent component (CourseLearnPage) will handle the navigation
+                          onNavigate(null, nextItem.section, nextItem); // Pass quiz as third parameter
+                        }
+                      }
+                    }}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all"
+                    disabled={isNavigating}
+                  >
+                    Take Quiz
+                    <FileText className="ml-2 -mr-1 h-5 w-5" />
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleNavigate(nextItem, nextItem.section)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                    disabled={isNavigating}
+                  >
+                    Next Lesson
+                    <ChevronRight className="ml-2 -mr-1 h-5 w-5" />
+                  </motion.button>
+                )
+              ) : isLastLesson ? (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => handleNavigate(next, next.section)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                  onClick={onBackToGrid}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
                   disabled={isNavigating}
                 >
-                  Next Lesson
-                  <ChevronRight className="ml-2 -mr-1 h-5 w-5" />
+                  Course Complete
+                  <Award className="ml-2 -mr-1 h-5 w-5" />
                 </motion.button>
+              ) : actualNext ? (
+                // Check if actualNext item is a quiz
+                actualNext.isQuiz ? (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      // Navigate to the section quiz
+                      if (typeof onNavigate === 'function') {
+                        onNavigate(null, actualNext.section, actualNext); // Pass quiz as third parameter
+                      }
+                    }}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all"
+                    disabled={isNavigating}
+                  >
+                    Take Quiz
+                    <FileText className="ml-2 -mr-1 h-5 w-5" />
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleNavigate(actualNext, actualNext.section)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                    disabled={isNavigating}
+                  >
+                    Next Lesson
+                    <ChevronRight className="ml-2 -mr-1 h-5 w-5" />
+                  </motion.button>
+                )
               ) : (
                 <motion.button
                   whileHover={{ scale: 1.05 }}

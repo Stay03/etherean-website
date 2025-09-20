@@ -7,6 +7,7 @@ import toast from '../utils/toastConfig'; // Import our custom toast configurati
 import CourseSidebar from '../components/lessons/CourseSidebar';
 import LessonGrid from '../components/lessons/LessonGrid';
 import LessonViewer from '../components/lessons/LessonViewer';
+import SectionQuizViewer from '../components/lessons/SectionQuizViewer';
 import Breadcrumb from '../components/Breadcrumb';
 
 /**
@@ -22,16 +23,18 @@ const CourseLearnPage = () => {
   const { isAuthenticated } = useAuth();
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'lesson'
+  const [selectedSectionQuiz, setSelectedSectionQuiz] = useState(null);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid', 'lesson', or 'section_quiz'
   // Add this flag to prevent auto-navigation when explicitly switching to grid view
   const [manualGridView, setManualGridView] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false); // Track lesson navigation state
   // Add a flag to indicate explicit lesson selection
   const [explicitLessonSelection, setExplicitLessonSelection] = useState(false);
   
-  // Get lessonId from URL if present
+  // Get lessonId and sectionQuizId from URL if present
   const searchParams = new URLSearchParams(location.search);
   const lessonIdFromUrl = searchParams.get('lesson');
+  const sectionQuizIdFromUrl = searchParams.get('section_quiz');
 
   // Fetch course details using custom hook with detailed=true
   const { 
@@ -78,6 +81,43 @@ const CourseLearnPage = () => {
   useEffect(() => {
     if (!course) return;
     
+    // If there's a section quiz ID in the URL, switch to section quiz view
+    if (sectionQuizIdFromUrl) {
+      const sectionQuizId = parseInt(sectionQuizIdFromUrl);
+      
+      // Find the section quiz and its section
+      let foundQuiz = null;
+      let foundSection = null;
+      
+      // Look for the quiz in all sections
+      for (const section of course.sections || []) {
+        const quiz = (section.quizzes || []).find(q => q.id === sectionQuizId);
+        if (quiz) {
+          foundQuiz = quiz;
+          foundSection = section;
+          break;
+        }
+      }
+      
+      // If we found the section quiz
+      if (foundQuiz && foundSection) {
+        setSelectedSectionQuiz(foundQuiz);
+        setSelectedSection(foundSection);
+        setSelectedLesson(null); // Clear lesson selection
+        setViewMode('section_quiz');
+        return; // Exit the effect once we've found and set the section quiz
+      } else {
+        // If section quiz not found, redirect to grid view
+        toast.error('Section quiz not found');
+        setViewMode('grid');
+        setSelectedSectionQuiz(null);
+        setSelectedLesson(null);
+        setSelectedSection(null);
+        navigate(`/course/${slug}/learn`, { replace: true });
+        return;
+      }
+    }
+    
     // If there's a lesson ID in the URL, switch to lesson view
     if (lessonIdFromUrl) {
       const lessonId = parseInt(lessonIdFromUrl);
@@ -118,6 +158,7 @@ const CourseLearnPage = () => {
         setViewMode('grid');
         setSelectedLesson(null);
         setSelectedSection(null);
+        setSelectedSectionQuiz(null);
         navigate(`/course/${slug}/learn`, { replace: true });
       }
     } else {
@@ -130,15 +171,16 @@ const CourseLearnPage = () => {
         setViewMode('grid');
         setSelectedLesson(null);
         setSelectedSection(null);
+        setSelectedSectionQuiz(null);
       }
     }
     
     // Reset explicit lesson selection flag after processing
     setExplicitLessonSelection(false);
-  }, [course, lessonIdFromUrl, progressionEnabled, nextLesson, isLessonAvailable, slug, navigate, viewMode, manualGridView, explicitLessonSelection]);
+  }, [course, lessonIdFromUrl, sectionQuizIdFromUrl, progressionEnabled, nextLesson, isLessonAvailable, slug, navigate, viewMode, manualGridView, explicitLessonSelection]);
 
   // Handle lesson selection with progression check
-  const handleLessonSelect = (lesson, section) => {
+  const handleLessonSelect = (lesson, section, quiz = null) => {
     // alert('Lesson selected: ' + lesson.title);
     // Reset the manual grid view flag when selecting a lesson
     setManualGridView(false);
@@ -149,9 +191,27 @@ const CourseLearnPage = () => {
     // Set explicit lesson selection flag to true to override progression
     setExplicitLessonSelection(true);
     
+    // If a quiz is passed, navigate to the section quiz view
+    if (quiz && quiz.isQuiz) {
+      // Set the selected section quiz and section
+      setSelectedSectionQuiz(quiz);
+      setSelectedSection(section);
+      setSelectedLesson(null); // Clear lesson selection
+      setViewMode('section_quiz');
+      
+      // Update URL with section quiz ID
+      navigate(`/course/${slug}/learn?section_quiz=${quiz.id}`, { replace: true });
+      
+      // Set a timeout to simulate loading
+      setTimeout(() => {
+        setIsNavigating(false);
+      }, 800);
+      return;
+    }
+    
     // Allow selecting lessons that are either available in progression, completed, or if progression is disabled
-    const isCompleted = lesson.complete === true;
-    if (!progressionEnabled || isLessonAvailable(lesson.id) || isCompleted) {
+    const isCompleted = lesson && lesson.complete === true;
+    if (lesson && (!progressionEnabled || isLessonAvailable(lesson.id) || isCompleted)) {
       setSelectedLesson(lesson);
       setSelectedSection(section);
       setViewMode('lesson');
@@ -170,6 +230,29 @@ const CourseLearnPage = () => {
     }
   };
 
+  // Handle section quiz selection
+  const handleSectionQuizSelect = (quiz, section) => {
+    // Reset the manual grid view flag when selecting a section quiz
+    setManualGridView(false);
+    
+    // Set navigating state to show loading UI
+    setIsNavigating(true);
+    
+    // Set the selected section quiz and section
+    setSelectedSectionQuiz(quiz);
+    setSelectedSection(section);
+    setSelectedLesson(null); // Clear lesson selection
+    setViewMode('section_quiz');
+    
+    // Update URL with section quiz ID
+    navigate(`/course/${slug}/learn?section_quiz=${quiz.id}`, { replace: true });
+    
+    // Set a timeout to simulate loading
+    setTimeout(() => {
+      setIsNavigating(false);
+    }, 800);
+  };
+
   // Handle returning to grid view
   const handleBackToGrid = () => {
     // Set the manual grid view flag to prevent auto-navigation
@@ -177,8 +260,9 @@ const CourseLearnPage = () => {
     setViewMode('grid');
     setSelectedLesson(null);
     setSelectedSection(null);
+    setSelectedSectionQuiz(null);
     
-    // Remove lesson param from URL
+    // Remove lesson and section quiz params from URL
     navigate(`/course/${slug}/learn`, { replace: true });
   };
 
@@ -293,6 +377,7 @@ const CourseLearnPage = () => {
               course={course}
               selectedLesson={selectedLesson}
               onLessonSelect={handleLessonSelect}
+              onSectionQuizSelect={handleSectionQuizSelect}
               onBackToGrid={handleBackToGrid}
               availableSections={availableSections}
               availableLessons={availableLessons}
@@ -303,7 +388,7 @@ const CourseLearnPage = () => {
 
           {/* Main content area */}
           <div className="w-full lg:w-3/4 p-6">
-            {/* Main content - grid or lesson view */}
+            {/* Main content - grid, lesson, or section quiz view */}
             <div>
               {viewMode === 'grid' ? (
                 <>
@@ -312,26 +397,53 @@ const CourseLearnPage = () => {
                   </h1>
                   
                   <LessonGrid 
-                    sections={availableSections}
+                    sections={course.sections}
                     onLessonSelect={handleLessonSelect}
+                    onSectionQuizSelect={handleSectionQuizSelect}
                     availableLessons={availableLessons}
                     progressionEnabled={progressionEnabled}
                     isNavigating={isNavigating}
                   />
                 </>
-              ) : (
+              ) : viewMode === 'lesson' ? (
                 <LessonViewer 
                   lesson={selectedLesson}
+                  section={selectedSection}
+                  course={course}
+                  onBackToGrid={handleBackToGrid}
+                  onNavigate={(lesson, section, quiz) => {
+                    // If quiz is provided, navigate to the section quiz
+                    if (quiz && quiz.isQuiz) {
+                      handleSectionQuizSelect(quiz, section);
+                    } else {
+                      // Otherwise, navigate to the lesson
+                      handleLessonSelect(lesson, section);
+                    }
+                  }}
+                  availableLessons={availableLessons}
+                  progressionEnabled={progressionEnabled}
+                  nextLesson={nextLesson}
+                  onLessonComplete={handleLessonComplete}
+                  onQuizComplete={handleLessonComplete}
+                  isNavigating={isNavigating}
+                />
+              ) : viewMode === 'section_quiz' ? (
+                <SectionQuizViewer 
+                  quiz={selectedSectionQuiz}
                   section={selectedSection}
                   course={course}
                   onBackToGrid={handleBackToGrid}
                   onNavigate={handleLessonSelect}
                   availableLessons={availableLessons}
                   progressionEnabled={progressionEnabled}
-                  onLessonComplete={handleLessonComplete}
+                  nextLesson={nextLesson}
+                  onQuizComplete={(results) => {
+                    toast.success('Section quiz completed successfully!');
+                    refetch(); // Refresh course data
+                  }}
                   isNavigating={isNavigating}
                 />
-              )}
+              ) : null}
             </div>
           </div>
         </div>

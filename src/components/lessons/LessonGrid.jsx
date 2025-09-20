@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
 import LessonCard from './LessonCard';
+import SectionQuizCard from './SectionQuizCard';
 
 /**
  * LessonGrid Component
  * Displays all course lessons in a grid layout
- * Now with progression support
+ * Now with progression support and section grouping
  */
 const LessonGrid = ({ 
   sections, 
-  onLessonSelect, 
+  onLessonSelect,
+  onSectionQuizSelect,
   availableLessons = [],
   progressionEnabled = false 
 }) => {
   const [filterSection, setFilterSection] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Get filtered and searched lessons
-  const getFilteredLessons = () => {
+  // Get filtered and searched lessons and section quizzes grouped by section
+  const getGroupedItems = () => {
     // Start with all sections
     let filteredSections = sections;
     
@@ -25,34 +27,61 @@ const LessonGrid = ({
       filteredSections = sections.filter(section => section.id.toString() === filterSection);
     }
     
-    // Then build lessons with section info and availability status
-    const lessonsWithSections = filteredSections.flatMap(section => 
-      (section.lessons || []).map(lesson => ({
+    // Build grouped items by section
+    const groupedItems = filteredSections.map(section => {
+      // Filter lessons by search term if provided
+      let sectionLessons = section.lessons || [];
+      let sectionQuizzes = section.quizzes || [];
+      
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        sectionLessons = sectionLessons.filter(lesson => 
+          lesson.title.toLowerCase().includes(term) || 
+          lesson.description?.toLowerCase().includes(term)
+        );
+        sectionQuizzes = sectionQuizzes.filter(quiz => 
+          quiz.title.toLowerCase().includes(term) || 
+          quiz.description?.toLowerCase().includes(term)
+        );
+      }
+      
+      // Build lessons with section info and availability status
+      const lessonsWithSections = sectionLessons.map(lesson => ({
         ...lesson,
         sectionTitle: section.title,
         sectionId: section.id,
         section: section,
+        itemType: 'lesson',
         // Check if lesson is available based on progression
         isAvailable: !progressionEnabled || availableLessons.some(l => l.id === lesson.id)
-      }))
-    );
+      }));
+      
+      // Build section quizzes with section info
+      const sectionQuizzesWithSections = sectionQuizzes.map(quiz => ({
+        ...quiz,
+        sectionTitle: section.title,
+        sectionId: section.id,
+        section: section,
+        itemType: 'section_quiz',
+        // Section quizzes are always available (no progression restrictions for now)
+        isAvailable: true
+      }));
+      
+      return {
+        section,
+        lessons: lessonsWithSections,
+        quizzes: sectionQuizzesWithSections,
+        items: [...lessonsWithSections, ...sectionQuizzesWithSections]
+      };
+    });
     
-    // Apply search term filter if provided
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      return lessonsWithSections.filter(lesson => 
-        lesson.title.toLowerCase().includes(term) || 
-        lesson.description?.toLowerCase().includes(term)
-      );
-    }
-    
-    return lessonsWithSections;
+    return groupedItems;
   };
   
-  const filteredLessons = getFilteredLessons();
+  const groupedItems = getGroupedItems();
   
-  // Show all lessons, including locked ones, in the grid view
-  const visibleLessons = filteredLessons;
+  // Flatten items for summary count when not grouping by section
+  const allItems = groupedItems.flatMap(group => group.items);
   
   return (
     <div>
@@ -103,34 +132,81 @@ const LessonGrid = ({
       
       {/* Results summary */}
       <div className="mb-4 text-sm text-gray-600">
-        Showing {visibleLessons.length} lessons
+        Showing {allItems.length} items 
+        ({allItems.filter(item => item.itemType === 'lesson').length} lessons, {allItems.filter(item => item.itemType === 'section_quiz').length} section quizzes)
         {filterSection !== 'all' && ' in this section'}
         {searchTerm && ` matching "${searchTerm}"`}
-        {progressionEnabled && ` (${visibleLessons.filter(lesson => lesson.isAvailable).length} available, ${visibleLessons.filter(lesson => !lesson.isAvailable).length} locked)`}
+        {progressionEnabled && ` (${allItems.filter(item => item.isAvailable).length} available, ${allItems.filter(item => !item.isAvailable).length} locked)`}
       </div>
       
-      {/* Grid layout */}
-      {visibleLessons.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {visibleLessons.map(lesson => (
-            <LessonCard
-              key={lesson.id}
-              lesson={lesson}
-              sectionTitle={lesson.sectionTitle}
-              onClick={() => onLessonSelect(lesson, lesson.section)}
-              isComplete={lesson.complete}
-              isAvailable={lesson.isAvailable}
-            />
-          ))}
+      {/* Grouped layout by section */}
+      {groupedItems.length > 0 ? (
+        <div className="space-y-12">
+          {groupedItems.map((group, groupIndex) => {
+            // Skip empty sections
+            if (group.items.length === 0) return null;
+            
+            return (
+              <div key={`section-${group.section.id}`} className="space-y-6">
+                {/* Section header */}
+                <div className="border-b border-gray-200 pb-2">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                    <span className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-800 flex items-center justify-center text-sm font-medium mr-3">
+                      {groupIndex + 1}
+                    </span>
+                    {group.section.title}
+                    <span className="ml-3 text-sm font-normal text-gray-500">
+                      {group.items.length} items
+                    </span>
+                  </h2>
+                  {group.section.description && (
+                    <p className="mt-1 text-sm text-gray-600">
+                      {group.section.description}
+                    </p>
+                  )}
+                </div>
+                
+                {/* Section items grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {group.items.map(item => {
+                    if (item.itemType === 'lesson') {
+                      return (
+                        <LessonCard
+                          key={`lesson-${item.id}`}
+                          lesson={item}
+                          sectionTitle={item.sectionTitle}
+                          onClick={() => onLessonSelect(item, item.section)}
+                          isComplete={item.complete}
+                          isAvailable={item.isAvailable}
+                        />
+                      );
+                    } else if (item.itemType === 'section_quiz') {
+                      return (
+                        <SectionQuizCard
+                          key={`quiz-${item.id}`}
+                          quiz={item}
+                          sectionTitle={item.sectionTitle}
+                          onClick={() => onSectionQuizSelect && onSectionQuizSelect(item, item.section)}
+                          isComplete={item.complete}
+                          isAvailable={item.isAvailable}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No lessons found</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No items found</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Try changing your search or filter to find what you're looking for.
+            No lessons or section quizzes match your current filters. Try changing your search or filter to find what you're looking for.
           </p>
           {(filterSection !== 'all' || searchTerm) && (
             <div className="mt-4">

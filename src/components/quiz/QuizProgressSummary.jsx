@@ -84,7 +84,7 @@ const QuizProgressSummary = ({ progressData, isLoading, error, onContinue }) => 
         <div className="mb-4">
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-gray-700">
-              Completion: {progress_percentage}%
+              Completion: {typeof progress_percentage === 'number' ? progress_percentage.toFixed(1) : progress_percentage}%
             </span>
             <span className="text-sm text-gray-500">
               {answered_questions}/{total_questions} questions
@@ -93,7 +93,7 @@ const QuizProgressSummary = ({ progressData, isLoading, error, onContinue }) => 
           <div className="w-full bg-gray-200 rounded-full h-2.5">
             <div 
               className={`h-2.5 rounded-full ${is_completed ? 'bg-green-600' : 'bg-amber-600'}`}
-              style={{ width: `${progress_percentage}%` }}
+              style={{ width: `${typeof progress_percentage === 'number' ? progress_percentage.toFixed(1) : progress_percentage}%` }}
             ></div>
           </div>
         </div>
@@ -145,7 +145,7 @@ const QuizProgressSummary = ({ progressData, isLoading, error, onContinue }) => 
           <div className="mt-5 text-center">
             <h4 className="text-sm font-medium text-gray-700 mb-2">Current Score</h4>
             <div className="inline-flex items-center justify-center p-4 bg-amber-50 rounded-full border border-amber-200">
-              <span className="text-2xl font-bold text-amber-700">{current_score}%</span>
+              <span className="text-2xl font-bold text-amber-700">{typeof current_score === 'number' ? current_score.toFixed(1) : current_score}%</span>
             </div>
             {has_essay_questions && essay_questions_pending_grading > 0 && (
               <p className="text-xs text-gray-500 mt-2">

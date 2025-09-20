@@ -12,6 +12,7 @@ const CourseSidebar = ({
   selectedLesson, 
   onLessonSelect, 
   onBackToGrid,
+  onSectionQuizSelect,
   availableSections = [],
   availableLessons = [],
   progressionEnabled = false
@@ -183,6 +184,11 @@ const CourseSidebar = ({
                   )}
                   <span className="text-xs text-gray-500 mr-2">
                     {section.lessons?.length || 0} lessons
+                    {section.quizzes && section.quizzes.length > 0 && (
+                      <span className="ml-1 text-purple-600">
+                        • {section.quizzes.length} quiz{section.quizzes.length !== 1 ? 'es' : ''}
+                      </span>
+                    )}
                   </span>
                   {sectionAvailable && (
                     <svg
@@ -268,6 +274,66 @@ const CourseSidebar = ({
                       </button>
                     );
                   })}
+                  
+                  {/* Section Quizzes */}
+                  {section.quizzes && section.quizzes.length > 0 && (
+                    <div className="bg-purple-50 border-t border-purple-100">
+                      <div className="px-3 py-2">
+                        <div className="text-xs font-semibold text-purple-800 mb-2 flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Section Quizzes
+                        </div>
+                        {section.quizzes.map((quiz, quizIndex) => (
+                          <button
+                            key={quiz.id}
+                            className={`w-full text-left p-2 mb-1 text-sm rounded transition-colors ${
+                              sectionAvailable
+                                ? 'bg-white hover:bg-purple-100 border border-purple-200'
+                                : 'bg-gray-100 cursor-not-allowed opacity-70 border border-gray-200'
+                            }`}
+                            onClick={() => sectionAvailable && onSectionQuizSelect && onSectionQuizSelect(quiz, section)}
+                            disabled={!sectionAvailable}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <span className={`w-4 h-4 rounded-full text-xs flex items-center justify-center mr-2 ${
+                                  sectionAvailable
+                                    ? quiz.complete
+                                      ? 'bg-green-100 text-green-600'
+                                      : 'bg-purple-100 text-purple-600'
+                                    : 'bg-gray-200 text-gray-400'
+                                }`}>
+                                  {quiz.complete ? (
+                                    <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  ) : (
+                                    'Q'
+                                  )}
+                                </span>
+                                <span className={`truncate text-xs ${
+                                  sectionAvailable ? 'text-purple-800' : 'text-gray-500'
+                                }`} title={quiz.title}>
+                                  {quiz.title}
+                                </span>
+                              </div>
+                              <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                                sectionAvailable 
+                                  ? quiz.complete 
+                                    ? 'bg-green-100 text-green-600'
+                                    : 'bg-purple-100 text-purple-600'
+                                  : 'bg-gray-100 text-gray-500'
+                              }`}>
+                                {quiz.questions?.length || 0}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
