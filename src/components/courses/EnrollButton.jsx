@@ -47,8 +47,8 @@ const EnrollButton = ({
       // Show success message
       toast.success('Course added to your account successfully!');
       
-      // Redirect to "My Items" page
-      navigate('/my-items');
+      // Redirect to course learning page
+      navigate(`/course/${course.product_info.slug}/learn`);
       
       return true;
     } catch (error) {
@@ -92,8 +92,8 @@ const EnrollButton = ({
             paymentService.verifyPayment(transaction.reference || reference)
               .then(verificationResponse => {
                 console.log('Payment verification:', verificationResponse);
-                // Redirect to "My Items" or course page
-                navigate('/my-items');
+                // Redirect to course learning page
+                navigate(`/course/${course.product_info.slug}/learn`);
               })
               .catch(error => {
                 console.error('Payment verification failed:', error);

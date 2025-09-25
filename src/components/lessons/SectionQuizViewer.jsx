@@ -363,25 +363,45 @@ const SectionQuizViewer = ({
               </motion.button>
               
               {nextLesson ? (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    // Find the section containing the next lesson
-                    const nextSection = course.sections.find(section => 
-                      section.lessons.some(lesson => lesson.id === nextLesson.id)
-                    );
-                    
-                    if (nextSection) {
-                      onNavigate(nextLesson, nextSection);
-                    }
-                  }}
-                  className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all"
-                  disabled={isNavigating}
-                >
-                  Next Lesson
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </motion.button>
+                // Check if next item is a quiz
+                nextLesson.isQuiz ? (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      // Navigate to the section quiz
+                      if (onNavigate && nextLesson.section) {
+                        // Pass the quiz as third parameter to trigger quiz navigation
+                        onNavigate(null, nextLesson.section, nextLesson);
+                      }
+                    }}
+                    className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all"
+                    disabled={isNavigating}
+                  >
+                    Take Quiz
+                    <FileText className="ml-2 h-4 w-4" />
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      // Find the section containing the next lesson
+                      const nextSection = course.sections.find(section =>
+                        section.lessons.some(lesson => lesson.id === nextLesson.id)
+                      );
+
+                      if (nextSection) {
+                        onNavigate(nextLesson, nextSection);
+                      }
+                    }}
+                    className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                    disabled={isNavigating}
+                  >
+                    Next Lesson
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </motion.button>
+                )
               ) : (
                 <motion.button
                   whileHover={{ scale: 1.05 }}

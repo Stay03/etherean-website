@@ -21,20 +21,64 @@ const useProgressionStatus = (course) => {
     if (!progressionEnabled) {
       // All sections are available
       const allSections = course.sections || [];
-      
+
       // All lessons are available
-      const allLessons = allSections.flatMap(section => 
+      const allLessons = allSections.flatMap(section =>
         (section.lessons || []).map(lesson => ({
           ...lesson,
           sectionId: section.id,
           sectionTitle: section.title
         }))
       );
-      
-      return { 
-        availableSections: allSections, 
+
+      let nextLesson = null;
+
+      // Prioritize next_item from API if available, as it's more accurate
+      if (course.next_item) {
+        const { next_item } = course;
+
+        if (next_item.type === 'lesson') {
+          // Find the section that contains this lesson
+          const section = course.sections.find(s => s.id === next_item.section_id);
+
+          if (section) {
+            // Find the lesson within the section
+            const lesson = section.lessons.find(l => l.id === next_item.id);
+
+            if (lesson) {
+              nextLesson = {
+                ...lesson,
+                sectionId: section.id,
+                sectionTitle: section.title,
+                section: section
+              };
+            }
+          }
+        } else if (next_item.type === 'section_quiz' || next_item.type === 'quiz') {
+          // Find the section that contains this quiz
+          const section = course.sections.find(s => s.id === next_item.section_id);
+
+          if (section) {
+            // Find the quiz within the section
+            const quiz = section.quizzes && section.quizzes.find(q => q.id === next_item.id);
+
+            if (quiz) {
+              nextLesson = {
+                ...next_item, // This includes the quiz details
+                sectionId: section.id,
+                sectionTitle: section.title,
+                section: section,
+                isQuiz: true // Flag to indicate this is a quiz
+              };
+            }
+          }
+        }
+      }
+
+      return {
+        availableSections: allSections,
         availableLessons: allLessons,
-        nextLesson: null // No "next lesson" concept if all are available
+        nextLesson: nextLesson
       };
     }
     

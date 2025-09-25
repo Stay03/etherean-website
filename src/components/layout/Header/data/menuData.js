@@ -42,7 +42,7 @@ export const primaryMenuItems = [
       { name: '50th Anniversary', path: '/events/50th-anniversary-OjDMS' },
       { name: 'Planetary Liberation Day', path: '#' },
       { name: 'Cultural Day', path: '#' },
-      { name: 'Beach Party', path: '#' },
+      { name: 'Beach Party', path: '/about/gallery' },
     ]
   },
   { 

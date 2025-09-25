@@ -46,6 +46,25 @@ const OrderConfirmationPage = () => {
     { label: 'Order Confirmation', path: '#' }
   ];
 
+  const getCourseRedirectPath = () => {
+    if (!order.items || order.items.length !== 1) return null;
+
+    const item = order.items[0];
+    if (item.product.type === 'digital' && item.product.slug) {
+      return `/course/${item.product.slug}/learn`;
+    }
+    return null;
+  };
+
+  const handlePrimaryAction = () => {
+    const coursePath = getCourseRedirectPath();
+    if (coursePath) {
+      navigate(coursePath);
+    } else {
+      navigate('/my-items');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="w-full bg-gray-50 min-h-screen">
@@ -229,13 +248,13 @@ const OrderConfirmationPage = () => {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
           <button
-            onClick={() => navigate('/my-items')}
+            onClick={handlePrimaryAction}
             className="px-8 py-3 bg-yellow-500 text-gray-900 rounded-xl font-semibold hover:bg-yellow-600 transition-all duration-200 flex items-center justify-center"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
-            Go to My Items
+            {getCourseRedirectPath() ? 'Start Learning' : 'Go to My Items'}
           </button>
           <button
             onClick={() => navigate('/shop')}
